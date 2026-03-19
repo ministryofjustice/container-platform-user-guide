@@ -1,13 +1,13 @@
-# Cloud Platform CP3 user guide
+# Container Platform user guide
 
 🚧 Under construction 🚧
 
-This repository holds the website and documentation for the [Cloud Platform
-user guide](https://user-guide.cloud-platform.service.justice.gov.uk/#cloud-platform-user-guide).
+This repository holds the website and documentation for the [Container Platform
+user guide](https://user-guide.development-temp.cloud-platform.service.justice.gov.uk).
 
 This repository utilises the Ministry of Justice's [template-documentation-site](https://github.com/ministryofjustice/template-documentation-site).
 
->Want to give feedback on the documentation? [Open an issue on this repository](https://github.com/ministryofjustice/cloud-platform-cp3-user-guide/issues).
+>Want to give feedback on the documentation? [Open an issue on this repository](https://github.com/ministryofjustice/container-platform-user-guide/issues).
 
 ## Running locally
 
@@ -40,7 +40,7 @@ This website is hosted on [GitHub Pages](https://pages.github.com/).
 ### Global configuration
 
 The [GOV.UK Tech Docs Template global configuration options](https://github.com/ministryofjustice/template-documentation-site/blob/main/README.md)
-can be used in this repository to configure the Cloud Platform user guide.
+can be used in this repository to configure the Container Platform user guide.
 
 ### Structuring documentation and page configuration
 
