@@ -1,61 +1,49 @@
-# Template Documentation Site
+# Cloud Platform CP3 user guide
 
-[![Ministry of Justice Repository Compliance Badge](https://github-community.service.justice.gov.uk/repository-standards/api/template-documentation-site/badge)](https://github-community.service.justice.gov.uk/repository-standards/template-documentation-site)
+🚧 Under construction 🚧
 
-Use this repository to create a documentation site using the Government Digital Service's [tech-docs-gem](https://github.com/alphagov/tech-docs-gem).
+This repository holds the website and documentation for the [Cloud Platform
+user guide](https://user-guide.cloud-platform.service.justice.gov.uk/#cloud-platform-user-guide).
 
-This is recommended for MoJ's technical documentation because:
+This repository utilises the Ministry of Justice's [template-documentation-site](https://github.com/ministryofjustice/template-documentation-site).
 
-- It uses the [GOV.UK Design System](https://design-system.service.gov.uk/) and makes it consistent with other technical documentation sites, including:
+>Want to give feedback on the documentation? [Open an issue on this repository](https://github.com/ministryofjustice/cloud-platform-cp3-user-guide/issues).
 
-  - [Cloud Platform's user guide](https://user-guide.cloud-platform.service.justice.gov.uk/)
+## Running locally
 
-  - [Modernisation Platform's user guide](https://user-guide.modernisation-platform.service.justice.gov.uk/)
+You can run this website locally by running:
 
-  - [MoJ's technical guidance](https://technical-guidance.service.justice.gov.uk/)
-
-  - [Cloud Optimisation & Accountability](https://cloud-optimisation-and-accountability.justice.gov.uk/)
-
-- Technical and non-technical team members can write your documentation using the [‘docs as code’](https://technology.blog.gov.uk/2017/08/25/why-we-use-a-docs-as-code-approach-for-technical-documentation/) approach
-
----
-
-# How to use this template
-
-1. Create a repository using this template ([shortcut](https://github.com/new?template_name=template-documentation-site&template_owner=ministryofjustice))
-
-1. Follow the setup instructions from [ministryofjustice/template-repository](https://github.com/ministryofjustice/template-repository?tab=readme-ov-file#setup-instructions)
-
-1. Remove the legacy technical documentation site
-
-    - `source/legacy-tdt-documentation`
-
-For guidance on using the tech-docs-gem, please refer to the [legacy documentation](https://ministryofjustice.github.io/template-documentation-site/legacy-tdt-documentation).
-
-# Developing
-
-## Requirements
-
-- Docker
-
-## Previewing locally
-
-Running the following command will run your technical documentation site locally using [ministryofjustice/tech-docs-github-pages-publisher](https://github.com/ministryofjustice/tech-docs-github-pages-publisher), allowing you to access it by visiting <http://127.0.0.1:4567> in your browser
-
-```bash
+```sh
 make preview
 ```
 
-## Checking links locally
+You can then browse to http://localhost:4567 to view the website.
 
-This repository includes a GitHub Actions workflow that uses [Lychee](https://github.com/lycheeverse/lychee) for checking links.
+## Updating documentation
 
-To perform this locally, you will either need to use the dev container or install Lychee, and the run:
+You can update the documentation by editing any of the `*.html.md.erb` files in
+the [source](source) directory.
 
-```bash
-make link-check
-```
+The syntax used in `*.html.md.erb` is Markdown, though it also supports some
+GOV.UK Design System specifics, as listed on [Tech Docs Template - Write your
+content](https://github.com/ministryofjustice/template-documentation-site/tree/main).
 
-# Publishing
+## Publishing changes
 
-This template includes a GitHub Actions workflow ([`.github/workflows/publish.yml`](.github/workflows/publish.yml)) for publishing to GitHub Pages when merging to `main`.
+Any changes that are merged into the `main` branch will be published
+automatically through the [`publish.yml` GitHub action](.github/workflows/publish.yml).
+
+This website is hosted on [GitHub Pages](https://pages.github.com/).
+
+## Configuring the website
+
+### Global configuration
+
+The [GOV.UK Tech Docs Template global configuration options](https://github.com/ministryofjustice/template-documentation-site/blob/main/README.md)
+can be used in this repository to configure the Cloud Platform user guide.
+
+### Structuring documentation and page configuration
+
+The [GOV.UK Tech Docs Template "Configure your documentation project"](https://github.com/ministryofjustice/template-documentation-site/blob/main/config/tech-docs.yml)
+offers a range of guidance regarding configuration options to help structure
+documentation and configure pages separately.
