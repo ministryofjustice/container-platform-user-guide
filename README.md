@@ -3,7 +3,7 @@
 🚧 Under construction 🚧
 
 This repository holds the website and documentation for the [Container Platform
-user guide](https://user-guide.development-temp.cloud-platform.service.justice.gov.uk).
+user guide](https://user-guide.development.container-platform.service.justice.gov.uk).
 
 This repository utilises the Ministry of Justice's [template-documentation-site](https://github.com/ministryofjustice/template-documentation-site).
 
