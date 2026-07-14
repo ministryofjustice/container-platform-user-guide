@@ -1,0 +1,105 @@
+---
+title: Expose a service with Gateway API (HTTPRoute)
+last_reviewed_on: 2026-07-13
+review_in: 6 months
+---
+
+# <%= current_page.data.title %>
+
+Use this guide to expose your application through the Container Platform Gateway API.
+
+This guide assumes your application is already running in Kubernetes and exposed by a `Service`.
+
+You can use any hostname under `*.<your-business-unit>.container-platform.service.justice.gov.uk`. The platform manages TLS for that domain through the shared `ListenerSet`. Custom domains will be covered in a separate guide.
+
+If you are already familiar with Gateway API and platform concepts, you can skip ahead to the [Prerequisites](#prerequisites) section.
+
+## Gateway API overview
+
+Gateway API is a Kubernetes networking model for exposing services.
+
+In the older *Cloud* Platform model, a single nginx `Ingress` resource described both:
+
+- where traffic enters the cluster
+- how requests are routed to your service
+
+With Gateway API, those responsibilities are split across separate resources.
+
+In *Container* Platform, you will use these Gateway API resources:
+
+- `ListenerSet`, which defines the shared entry point for incoming traffic
+- `HTTPRoute`, which defines how requests are routed using hostname and path rules
+
+This separation means the platform can manage the shared traffic entry point, while application teams manage their own routing rules.
+
+You will create an `HTTPRoute` that:
+
+- attaches to a platform-managed `ListenerSet`
+- routes traffic for your hostname
+- forwards traffic to your Kubernetes `Service`
+
+## Platform overview
+
+A simplified view of the platform-managed Gateway API resources is shown below.
+
+- `ListenerSet` defines the shared hostname pattern for incoming traffic, `*.<your-business-unit>.container-platform.service.justice.gov.uk`.
+- `Gateway` and related resources manage the underlying ingress infrastructure, including Envoy proxies and load balancers.
+
+Only the resources highlighted in blue are created by application teams.
+
+![Platform overview diagram](../../images/gateway-api-resource-model.drawio.svg)
+
+## Prerequisites
+
+Before creating an `HTTPRoute`, make sure you have:
+
+- a namespace for your application
+- a running `Deployment` or other workload for your application
+- a Kubernetes `Service` that exposes that workload
+- the service port your application listens on
+
+## Example HTTPRoute
+
+Create a file named `httproute.yaml`:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: <your-app>
+  namespace: <your-namespace>
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: default-listenerset
+      namespace: envoy-gateway-system
+  hostnames:
+    - "<your-app>.<your-business-unit>.container-platform.service.justice.gov.uk"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: <your-service-name>
+          port: <your-service-port>
+```
+
+Replace these placeholders with your own values:
+
+- `<your-app>`: the `HTTPRoute` name and hostname prefix
+- `<your-namespace>`: your application namespace
+- `<your-business-unit>`: your business unit domain segment
+- `<your-service-name>`: the Kubernetes `Service` your route targets
+- `<your-service-port>`: the service port your application listens on
+
+## Visit your service URL
+
+Once the route is accepted and DNS has propagated, open:
+
+```text
+https://<your-app>.<your-business-unit>.container-platform.service.justice.gov.uk
+```
