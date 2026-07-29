@@ -6,61 +6,72 @@ review_in: 6 months
 
 # <%= current_page.data.title %>
 
-Use this guide to expose your application through the Container Platform Gateway API.
+Use this guide to expose an existing Kubernetes `Service` using an `HTTPRoute`.
 
-This guide assumes your application is already running in Kubernetes and exposed by a `Service`.
+By the end, your application will be reachable at:
 
-You can use any hostname under `*.<your-business-unit>.container-platform.service.justice.gov.uk`. The platform manages TLS for that domain through the shared `ListenerSet`. Custom domains will be covered in a separate guide.
+```text
+https://<your-app>.<your-business-unit>.container-platform.service.justice.gov.uk
+```
 
-If you are already familiar with Gateway API and platform concepts, you can skip ahead to the [Prerequisites](#prerequisites) section.
+## What is Gateway API?
 
-## Gateway API overview
+Gateway API is the Kubernetes API for service networking. It lets you define how external traffic reaches services in your cluster using resources such as `Gateway` and `HTTPRoute`.
 
-Gateway API is a Kubernetes networking model for exposing services.
+In the older Cloud Platform model, a single nginx `Ingress` resource described both where traffic entered the cluster and how requests were routed to services. With Gateway API, these responsibilities are split across dedicated resources.
 
-In the older *Cloud* Platform model, a single nginx `Ingress` resource described both:
+See the Kubernetes documentation: [Gateway API](https://kubernetes.io/docs/concepts/services-networking/gateway/).
 
-- where traffic enters the cluster
-- how requests are routed to your service
+## What is Envoy Gateway?
 
-With Gateway API, those responsibilities are split across separate resources.
+Envoy Gateway is the Kubernetes-native gateway controller built on top of Envoy Proxy. In Container Platform, Envoy Gateway is part of the ingress path that receives requests and forwards them to your service based on your `HTTPRoute`.
 
-In *Container* Platform, you will use these Gateway API resources:
+In practice, the platform manages the shared traffic entry point (`ListenerSet`, `Gateway`, and Envoy Gateway), while application teams manage `HTTPRoute` rules for their own hostnames and services.
 
-- `ListenerSet`, which defines the shared entry point for incoming traffic
-- `HTTPRoute`, which defines how requests are routed using hostname and path rules
+See the Envoy Gateway documentation: [Envoy Gateway docs](https://gateway.envoyproxy.io/docs/).
 
-This separation means the platform can manage the shared traffic entry point, while application teams manage their own routing rules.
+You will make use of the shared platform `ListenerSet` called `default-listenerset` in the `envoy-gateway-system` namespace. See the [ListenerSet documentation](https://gateway-api.sigs.k8s.io/guides/user-guides/listener-set/) for more information.
 
-You will create an `HTTPRoute` that:
+## Before you start
 
-- attaches to a platform-managed `ListenerSet`
-- routes traffic for your hostname
-- forwards traffic to your Kubernetes `Service`
-
-## Platform overview
-
-A simplified view of the platform-managed Gateway API resources is shown below.
-
-- `ListenerSet` defines the shared hostname pattern for incoming traffic, `*.<your-business-unit>.container-platform.service.justice.gov.uk`.
-- `Gateway` and related resources manage the underlying ingress infrastructure, including Envoy proxies and load balancers.
-
-Only the resources highlighted in blue are created by application teams.
-
-![Platform overview diagram](../../images/gateway-api-resource-model.drawio.svg)
-
-## Prerequisites
-
-Before creating an `HTTPRoute`, make sure you have:
+Make sure you already have:
 
 - a namespace for your application
-- a running `Deployment` or other workload for your application
-- a Kubernetes `Service` that exposes that workload
+- a running workload (for example, a `Deployment`)
+- a `Service` in that namespace that points to your workload
 - the service port your application listens on
 
-## Example HTTPRoute
+## Steps
 
-Create a file named `httproute.yaml`:
+### 1. Choose values for your route
+
+You need these values:
+
+- `<your-app>`: route name and hostname prefix
+- `<your-hostname>`: route hostname
+- `<your-business-unit>`: your business unit, see below for how to find this value
+- `<your-namespace>`: your namespace
+- `<your-service-name>`: the `Service` name to send traffic to
+- `<your-service-port>`: the service port to use
+
+If needed, run `kubectl get svc -n <your-namespace>` to list services in your namespace.
+
+To find valid hostnames that you can use, describe the default `ListenerSet` in the `envoy-gateway-system` namespace:
+
+```sh
+kubectl describe listenerset -n envoy-gateway-system default-listenerset | grep "Hostname"
+
+# Example output:
+Hostname: *.<octo-nonlive>.container-platform.service.justice.gov.uk
+```
+
+So any hostname that matches the pattern `*.<your-business-unit>.container-platform.service.justice.gov.uk` is valid. 
+
+For example, if your business unit is `octo-nonlive`, you could use `my-app.octo-nonlive.container-platform.service.justice.gov.uk`.
+
+### 2. Create an HTTPRoute manifest
+
+Create a file named `httproute.yaml` and substitute the values you chose in the previous step:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -75,7 +86,7 @@ spec:
       name: default-listenerset
       namespace: envoy-gateway-system
   hostnames:
-    - "<your-app>.<your-business-unit>.container-platform.service.justice.gov.uk"
+    - "<your-hostname>"
   rules:
     - matches:
         - path:
@@ -88,18 +99,116 @@ spec:
           port: <your-service-port>
 ```
 
-Replace these placeholders with your own values:
+### 3. Apply the route
 
-- `<your-app>`: the `HTTPRoute` name and hostname prefix
-- `<your-namespace>`: your application namespace
-- `<your-business-unit>`: your business unit domain segment
-- `<your-service-name>`: the Kubernetes `Service` your route targets
-- `<your-service-port>`: the service port your application listens on
+```sh
+kubectl apply -f httproute.yaml
+```
 
-## Visit your service URL
+### 4. Check that the route is accepted
 
-Once the route is accepted and DNS has propagated, open:
+```sh
+kubectl get httproute <your-app> -n <your-namespace>
+```
 
-```text
-https://<your-app>.<your-business-unit>.container-platform.service.justice.gov.uk
+You can also check the `Accepted` condition:
+
+```sh
+kubectl describe httproute <your-app> -n <your-namespace>
+```
+
+In the output, look for `Type: Accepted` and `Status: True`.
+
+### 5. Open your application URL
+
+Once the route is accepted and DNS has propagated, open your HTTPRoute hostname in a browser or use `curl` to check that your application is reachable.
+
+You can find the hostname in the `hostnames` section of your `HTTPRoute` manifest or in the output of `kubectl describe httproute <your-app> -n <your-namespace>`.
+
+### 6. Optional: remove the route later
+
+```sh
+kubectl delete -f httproute.yaml
+```
+
+## Full working example manifest
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-app
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-deployment
+  namespace: my-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: echo
+          image: hashicorp/http-echo:0.2.3
+          args:
+            - "-text=Hello, Cloud Platform!"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app
+  namespace: my-app
+spec:
+  selector:
+    app: my-app
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: my-app-route
+  namespace: my-app
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: ListenerSet
+      name: default-listenerset
+      namespace: envoy-gateway-system
+  hostnames:
+    - "my-app.octo-nonlive.container-platform.service.justice.gov.uk"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: my-app
+          port: 80
 ```
