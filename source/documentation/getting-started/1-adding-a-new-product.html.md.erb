@@ -15,6 +15,7 @@ Multiple namespaces can be declared in the same product.yaml file, but each name
 Access to the cluster and namespaces is determined by the `access` section of the product.yaml file. The `group` key must match a group in the cluster's RBAC configuration, and the `role` key must be one of the following: `view`, `edit`, or `admin`. The `clusters` key is a list of clusters where the access applies.
 
 Example `product.yaml`:
+
 ```yaml
 product: my-product
 bu: octo
