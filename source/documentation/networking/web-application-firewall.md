@@ -219,24 +219,72 @@ Consider using `DetectionOnly` instead if you are troubleshooting false positive
 
 ## Invalid WAF configuration
 
-The Container Platform validates application-specific Coraza configuration before it is applied to Envoy.
+> **Note:** Validation of Coraza configuration before it is applied is planned but is not currently available.
 
-If your `EnvoyExtensionPolicy` contains invalid Coraza syntax, Kubernetes rejects the change.
+Take care when adding custom Coraza directives to your `EnvoyExtensionPolicy`.
 
-For example, an invalid configuration may return:
+Kubernetes and Envoy Gateway do not validate the Coraza rule syntax when the `EnvoyExtensionPolicy` is created. This means Kubernetes may successfully accept an `EnvoyExtensionPolicy` containing invalid Coraza configuration.
 
-```text
-Error from server:
-admission webhook "coraza-validator..."
-denied the request:
+For example:
 
-invalid Coraza configuration:
-failed to compile directive "secaction"
+```yaml
+config:
+  directives:
+    - Include @coraza.conf
+    - SecRuleEngine On
+    - SecAction "id:1002,phase:1,pass,setvar:ip.requests=+1,expirevar:ip.requests=60"
 ```
 
-The invalid `EnvoyExtensionPolicy` is not applied and does not change the WAF configuration used by your application.
+The policy may be successfully created:
 
-Correct the configuration and apply your policy again.
+```shell
+kubectl apply -f waf-policy.yaml
+```
+
+However, when Envoy receives the updated configuration, the Coraza dynamic module attempts to compile the WAF configuration.
+
+If the configuration is invalid, Coraza cannot create the WAF and Envoy rejects the updated listener configuration.
+
+You may see errors similar to the following in the Envoy logs:
+
+```text
+[warning][dynamic_modules] Failed to load configuration:
+failed to create WAF from directives:
+invalid WAF config from string:
+failed to compile the directive "secaction":
+invalid arguments, expected collection TX
+
+[warning][config] delta config for
+type.googleapis.com/envoy.config.listener.v3.Listener rejected:
+Failed to create filter config:
+Failed to initialize dynamic module
+```
+
+Envoy Gateway may also report that Envoy rejected the configuration update:
+
+```text
+Envoy rejected the last update with code 13:
+Error adding/updating listener(s):
+Failed to create filter config:
+Failed to initialize dynamic module
+```
+
+When Envoy rejects the new listener configuration, it continues using the last successfully accepted configuration rather than applying the invalid update.
+
+Because applications share platform Gateway infrastructure, an invalid application-specific WAF configuration can cause an update to the associated shared listener to be rejected.
+
+This can prevent other configuration changes for that listener from becoming active until the invalid WAF configuration is corrected or removed.
+
+If you apply an invalid WAF configuration:
+
+1. check the Envoy logs for `Failed to create WAF from directives`
+2. identify and correct the invalid Coraza directive
+3. apply the corrected `EnvoyExtensionPolicy`
+4. confirm that Envoy accepts the new listener configuration
+
+We recommend testing custom Coraza configuration before applying it to production environments.
+
+> **Planned improvement:** Container Platform will validate application-specific Coraza configuration during Kubernetes admission. Invalid Coraza configuration will then be rejected before it reaches Envoy Gateway, preventing an invalid WAF policy from affecting the shared listener configuration.
 
 ## View WAF events
 
