@@ -46,29 +46,47 @@ Platform Gateway
         └── application policy takes precedence
 ```
 
-If you want to retain the standard OWASP CRS protection while adding your own configuration, your policy must include the standard Coraza and OWASP CRS configuration:
+If you want to retain the standard OWASP CRS protection, your application-specific policy must continue to load the OWASP CRS configuration and rules.
+
+A complete application-specific WAF policy looks like this:
 
 ```yaml
-directives:
-  - Include @coraza.conf
-  - SecRuleEngine On
-  - Include @crs-setup.conf
-  - Include @owasp_crs/*.conf
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyExtensionPolicy
+metadata:
+  name: my-application-waf
+  namespace: my-namespace
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: my-application
+  dynamicModule:
+    - name: composer
+      filterName: coraza-waf
+      config:
+        directives:
+          - Include @coraza.conf
+          - SecRuleEngine On
+          - Include @crs-setup.conf
+          - Include @owasp_crs/*.conf
 
-  # Add application-specific configuration below
+          # Add application-specific configuration below
 ```
 
-For example, creating a policy containing only:
+Replace:
 
-```yaml
-directives:
-  - Include @coraza.conf
-  - SecRuleEngine On
+- `my-namespace` with your application namespace
+- `my-application` with the name of your `HTTPRoute`
+- `my-application-waf` with a suitable name for your WAF policy
+
+Apply the policy:
+
+```shell
+kubectl apply -f waf-policy.yaml
 ```
 
-does **not** add these directives to the platform default.
-
-This becomes the WAF configuration for your `HTTPRoute`, and the OWASP CRS rules are not loaded unless you include them.
+Once applied, this becomes the effective WAF configuration for the targeted `HTTPRoute`.
 
 ## WAF modes
 
@@ -112,17 +130,6 @@ spec:
           - Include @owasp_crs/*.conf
 ```
 
-Replace:
-
-- `my-namespace` with your application namespace
-- `my-application` with the name of your `HTTPRoute`
-
-Apply the configuration:
-
-```shell
-kubectl apply -f waf-policy.yaml
-```
-
 This route-level policy takes precedence over the platform Gateway WAF policy.
 
 The configuration above explicitly loads the OWASP Core Rule Set but changes `SecRuleEngine` from the platform default of `On` to `DetectionOnly`.
@@ -150,40 +157,26 @@ Requests that trigger blocking rules receive an HTTP `403 Forbidden` response an
 
 ## Add application-specific WAF rules
 
-You can add application-specific Coraza rules to your `EnvoyExtensionPolicy`.
+Add application-specific Coraza directives after the standard OWASP CRS configuration in your `EnvoyExtensionPolicy`.
 
-If you want to retain the platform's standard protection, start your route-level policy with the standard Coraza and OWASP CRS configuration:
-
-```yaml
-config:
-  directives:
-    - Include @coraza.conf
-    - SecRuleEngine On
-    - Include @crs-setup.conf
-    - Include @owasp_crs/*.conf
-
-    # Add application-specific rules below
-```
-
-For example, if you need to exclude a specific OWASP CRS rule:
+For example, to exclude OWASP CRS rule `942100`:
 
 ```yaml
-config:
-  directives:
-    - Include @coraza.conf
-    - SecRuleEngine On
-    - Include @crs-setup.conf
-    - Include @owasp_crs/*.conf
-    - SecRuleRemoveById 942100
-```
+directives:
+  - Include @coraza.conf
+  - SecRuleEngine On
+  - Include @crs-setup.conf
+  - Include @owasp_crs/*.conf
 
-Remember that this is the complete WAF configuration for your `HTTPRoute`. It is not appended to the platform default.
+  # Application-specific configuration
+  - SecRuleRemoveById 942100
+```
 
 Removing an OWASP CRS rule reduces the protection provided by the WAF. Where possible, make exclusions as specific as possible rather than disabling a rule for your entire application.
 
 We recommend testing application-specific changes using `DetectionOnly` before enabling blocking mode.
 
-For more information about writing Coraza rules, see the [Coraza documentation](https://coraza.io/docs/).
+For information about available Coraza directives and writing custom rules, see the [Coraza documentation](https://coraza.io/docs/).
 
 ## Disable the WAF
 
@@ -332,14 +325,14 @@ A false positive occurs when the WAF identifies legitimate application traffic a
 
 If you believe a WAF rule is blocking legitimate traffic:
 
-1. Configure your `HTTPRoute` to use `DetectionOnly`.
-2. Reproduce representative application traffic.
-3. Review the WAF events.
-4. Identify the rule ID causing the match.
-5. Determine why the legitimate request triggered the rule.
-6. Add an application-specific exclusion if required.
-7. Test the change.
-8. Change `SecRuleEngine` back to `On`.
+1. configure your `HTTPRoute` to use `DetectionOnly`
+2. reproduce representative application traffic
+3. review the WAF events
+4. identify the rule ID causing the match
+5. determine why the legitimate request triggered the rule
+6. add an application-specific exclusion if required
+7. test the change
+8. change `SecRuleEngine` back to `On`
 
 Avoid disabling the entire WAF when a specific rule exclusion can resolve the issue.
 
