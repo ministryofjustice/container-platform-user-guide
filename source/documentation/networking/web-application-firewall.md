@@ -317,7 +317,7 @@ WAF rule triggered
 
 WAF events include the triggered rule ID. You can use this ID to identify the OWASP CRS rule when investigating false positives.
 
-> **Note:** Add Container Platform log-search instructions here once the WAF logging integration is finalised.
+> **TODO Note:** Add log-search instructions here once the WAF logging integration is in place.
 
 ## Investigate false positives
 
