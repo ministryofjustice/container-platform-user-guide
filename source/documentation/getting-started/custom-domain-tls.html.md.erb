@@ -27,7 +27,7 @@ instead.
 
 ## How it works
 
-Three things have to line up:
+Four things have to line up:
 
 1. **A certificate.** `cert-manager` requests a certificate from Let's Encrypt
    using a DNS-01 challenge. Because you own the domain (not the platform), the
@@ -38,6 +38,9 @@ Three things have to line up:
 2. **A listener.** Your `ListenerSet` adds an HTTPS listener for your hostname to
    the shared platform `Gateway`, terminating TLS with the certificate above.
 3. **A route.** Your `HTTPRoute` sends traffic for the hostname to your `Service`.
+4. **A network policy.** Platform namespaces deny all ingress by default, so you
+   must allow traffic from the gateway namespace to your Pods. Without it, the
+   request reaches the gateway but times out before it gets to your application.
 
 ## How you apply changes
 
@@ -124,9 +127,9 @@ dig +short <your-custom-domain>
 
 ### 4. Add the manifests to your service configuration
 
-Add the following three resources to your service's directory in
+Add the following four resources to your service's directory in
 `container-platform-environments` (the same place your `Deployment` and `Service`
-are defined). You can put them in one file or three.
+are defined). You can put them in one file or several.
 
 The `argocd.argoproj.io/sync-wave` annotations make ArgoCD create the
 `Certificate` before the `ListenerSet`, so the TLS secret exists by the time the
@@ -210,6 +213,32 @@ spec:
           port: <your-service-port>
 ```
 
+**NetworkPolicy** lets the gateway reach your Pods. Platform namespaces deny all
+ingress by default, so without this the gateway returns `503`
+(`upstream connect error ... connection timeout`):
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: <your-app>-allow-gateway
+  namespace: <your-namespace>
+spec:
+  podSelector:
+    matchLabels:
+      app: <your-app>            # must match your Pod labels
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
+      ports:
+        - protocol: TCP
+          port: <your-container-port>   # the Pod port, e.g. 8080
+```
+
 ### 5. Raise a pull request
 
 Commit the manifests, push, and open a pull request against
@@ -239,7 +268,7 @@ A working result is the certificate `READY=True`, `programmed=True`,
 
 ## Remove it later
 
-Delete the three manifests from `container-platform-environments` and raise a
+Delete the four manifests from `container-platform-environments` and raise a
 pull request. When it merges, ArgoCD removes the resources from your cluster.
 
 Also remove the two DNS records from your domain. Leaving a traffic `CNAME`
@@ -269,6 +298,12 @@ The ingress controller needs to re-read the secret.
 **`curl` fails with no certificate returned.**
 The listener is not programmed yet, or the traffic `CNAME` has not propagated.
 Re-check step 6 and `dig +short <your-custom-domain>`.
+
+**Request returns `503` with `upstream connect error ... connection timeout`.**
+TLS terminated and the route matched, but the gateway cannot reach your Pods.
+This is almost always a missing or mismatched `NetworkPolicy`. Confirm the policy
+from step 4 exists, that its `podSelector` matches your Pod labels, and that the
+port is your **container** port, not the `Service` port.
 
 ## Full working example
 
@@ -341,4 +376,24 @@ spec:
           kind: Service
           name: my-app
           port: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: my-app-allow-gateway
+  namespace: my-app
+spec:
+  podSelector:
+    matchLabels:
+      app: my-app
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
+      ports:
+        - protocol: TCP
+          port: 8080
 ```
