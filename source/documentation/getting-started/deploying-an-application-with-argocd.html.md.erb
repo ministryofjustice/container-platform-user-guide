@@ -365,9 +365,35 @@ condition of `True` (check with `kubectl -n my-app-dev describe httproute
 my-app`). Once DNS has propagated, the app answers at
 `https://my-app.octo-nonlive.container-platform.service.justice.gov.uk`.
 
-If you have access to the ArgoCD UI, you can also watch two items reach **Synced
-/ Healthy**: `baseline-octo-my-app-dev` (which creates the namespace and
-guardrails) and `octo-my-app-dev` (your workload).
+### Watch the deployment in the ArgoCD UI
+
+You can also follow the deployment in the ArgoCD web UI. Access is through the
+AWS access portal using your Container Platform SSO role.
+
+1. Sign in to the [AWS access portal](https://moj.awsapps.com/start) and open the
+   **Applications** tab.
+2. Search for the environment tier you are deploying to (for example `nonlive`)
+   and open the matching ArgoCD capability, for example **EKS Managed ArgoCD
+   Capability-argocd-cloud-platform-nonlive**. Non-live workloads are managed by
+   the non-live hub; live workloads by the live hub.
+
+   ![The AWS access portal Applications tab, filtered to "nonlive", showing the EKS Managed ArgoCD Capability for cloud-platform-nonlive](../../images/argocd-aws-access-portal.png)
+
+3. ArgoCD opens showing the **Applications** view. Search for your product name
+   to filter to your Applications. Application (tenant) engineers get read-only
+   access, which is enough to watch the sync.
+
+   ![The ArgoCD Applications view listing Applications for a product, each showing its project, sync status and health status](../../images/argocd-applications-ui.png)
+
+Look for two items to reach **Synced / Healthy**:
+
+- `baseline-octo-my-app-dev` — creates the namespace, network policy, and role
+  bindings.
+- `octo-my-app-dev` — your workload.
+
+Each tile shows the **Sync Status** (Synced or OutOfSync) and **Health Status**
+(Healthy, Progressing, Degraded, and so on), along with the source repository,
+target revision, and destination cluster and namespace.
 
 ## Update your application
 
