@@ -81,7 +81,9 @@ Make sure you already have:
   an apex).
 - `<your-business-unit>`: from the check above.
 - `<your-namespace>`, `<your-service-name>`, `<your-service-port>`: your app.
-- `<acme-target-label>`: any short label you choose, for example `payments-acme`.
+- `<acme-target-label>`: any short label, it just names where the challenge is
+  written. If you have several custom-domain certificates, give each a distinct
+  label (e.g. `<app>-acme`) so their challenges don't collide.
 
 ### 2. Find the platform ingress address
 
