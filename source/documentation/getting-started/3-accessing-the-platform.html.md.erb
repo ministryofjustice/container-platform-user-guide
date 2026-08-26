@@ -1,0 +1,41 @@
+---
+title: Accessing the Platform
+last_reviewed_on: 2026-08-04
+review_in: 6 months
+---
+
+# <%= current_page.data.title %>
+
+<!-- Accessing the Platform -->
+
+## Accessing the AWS Console
+
+1. Navigate to https://moj.awsapps.com/start
+2. You will see a list of AWS accounts you have access to. Click on the account you want to access.
+3. Choose the role you want to use. Container Platform roles are prefixed with `cp-` and then your GitHub team name, for example, `cp-my-first-team` or `cp-my-second-team`.
+4. Your console and cluster API permissions depend on the role you choose.
+
+## Accessing the Cluster API
+
+1. Navigate to https://moj.awsapps.com/start
+2. Select the AWS account you want to access.
+3. Next to the role that you want to use, click on the `Access keys` link. This will give you options to get your temporary access keys.
+4. Using the access keys, you can configure your local kubectl to access the cluster API. You can use the following command to set up your kubeconfig:
+
+```bash
+aws eks --region <region> update-kubeconfig --name <cluster-name> --alias my-cluster
+```
+
+Note: this assumes you have copied the temporary access keys into local environment variables. You can also use the `--profile` option to specify a named profile if you have multiple AWS profiles configured, and SSO commands to log in to AWS and retrieve temporary credentials. For more information, see the [AWS CLI documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html).
+
+5. Set the cluster context to the cluster you want to access:
+
+```bash
+kubectl config use-context my-cluster
+```
+
+6. Run your kubectl commands to interact with the cluster API. For example, you can list the namespaces in the cluster:
+
+```bash
+kubectl get namespaces
+``` 
