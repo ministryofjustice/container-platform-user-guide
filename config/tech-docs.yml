@@ -1,18 +1,61 @@
----
-# https://github.com/alphagov/tech-docs-gem/blob/main/example/config/tech-docs.yml
+# Host to use for canonical URL generation (without trailing slash)
+host: https://user-guide.development.container-platform.service.justice.gov.uk
 
-host: https://ministryofjustice.github.io/template-documentation-site
+# Header-related options
 show_govuk_logo: false
-service_name: Template Documentation Site
+service_name: Container Platform User Guide
 service_link: /
+phase: In Development
+
+# Links to show on right-hand-side of header
 header_links:
-enable_search: true
-collapsible_nav: true
+  Feedback / Report a problem: 'mailto:platforms+user-guide@digital.justice.gov.uk?subject=CP3+User+guide+feedback' ##email address to tbc
+  Documentation: /
+  GitHub: https://github.com/ministryofjustice/container-platform-user-guide
+
+footer_links:
+
+# Tracking IDs
+# Google Analytics 4 using gtag.js (e.g G-XXXXXX)
+ga4_tracking_id:
+# Google Analytics 4 using Google Tag Manager (e.g GTM-XXXXXXXX)
+ga4_gtm_tracking_id:
+# Google Universal Analytics (e.g. UA-XXXX-Y)
+ga_tracking_id:
+
+# Enable multipage navigation in the sidebar
+multipage_nav: false
+
+# Enable collapsible navigation in the sidebar
+collapsible_nav: false
+
+# Table of contents depth – how many levels to include in the table of contents.
+# If your ToC is too long, reduce this number and we'll only show higher-level
+# headings.
 max_toc_heading_level: 3
+
+# Prevent robots from indexing (e.g. whilst in development)
 prevent_indexing: true
+
+google_site_verification:
+
+enable_search: true
+
+# Enable hoverable anchor links next to every heading
+enable_anchored_headings: true
+
 show_contribution_banner: true
-github_repo: ministryofjustice/template-documentation-site
+
+github_repo: ministryofjustice/container-platform-user-guide
 github_branch: main
-full_service_name: Template Documentation Site
-show_expiry: true
-show_review_banner: true
+
+redirects:
+  /something/old.html: /index.html
+
+api_path:
+
+# Optional global settings for the page review process
+owner_slack_workspace: "mojdt"
+default_owner_slack: "#cloud-platform-notify"
+
+full_service_name: Container Platform User Guide
