@@ -1,23 +1,15 @@
 ---
-title: Deploying an application with ArgoCD
+title: Deploying an application to the Container Platform
 last_reviewed_on: 2026-08-20
 review_in: 6 months
 ---
 
 # <%= current_page.data.title %>
 
-This guide walks through deploying an application end to end using the Container
+This guide walks through deploying an application end-to-end using the Container
 Platform GitOps workflow. You describe your workload in Git, open a pull
 request, and once it merges ArgoCD deploys it to the target cluster for you.
 There is no `kubectl apply` and no manual ArgoCD step: the merge is the deploy.
-
-It ties together two earlier guides,
-[Adding a New Product](/documentation/getting-started/1-adding-a-new-product.html)
-and
-[Adding a service deployment](/documentation/getting-started/2-adding-a-service-deployment.html),
-into a single worked example you can follow start to finish. It deploys a public
-container image to one non-live environment, which is the smallest complete path
-that proves the workflow.
 
 ## How GitOps deployment works
 
@@ -51,7 +43,7 @@ You need:
 
 You do not need cluster credentials to deploy. They are useful for verifying the
 result afterwards. See
-[Accessing the Platform](/documentation/getting-started/3-accessing-the-platform.html)
+[Accessing the Container Platform](/documentation/getting-started/2-accessing-the-container-platform.html)
 for how to get `kubectl` access.
 
 ## What you will create
@@ -103,9 +95,7 @@ access:
 The `namespace` value is the namespace created on the cluster. The `group` value
 is your GitHub team, which the platform maps to cluster access. `is_production:
 false` marks this as non-live; live environments have extra requirements covered
-in a later guide. See
-[Adding a New Product](/documentation/getting-started/1-adding-a-new-product.html)
-for the full reference.
+in a later guide. The product layout above is the full reference for this deployment.
 
 ## Step 2: Create the service Helm chart
 
@@ -241,7 +231,7 @@ falls under that wildcard, you do not need to define your own listener or manage
 certificate. If you only need to prove the deploy and do not need external access
 yet, you can omit the HTTPRoute and verify the Deployment directly. For a fuller
 walkthrough of routing, see
-[Expose a service with Gateway API (HTTPRoute)](/documentation/getting-started/gateway-api-httproute.html).
+[Expose a service with Gateway API (HTTPRoute)](/documentation/getting-started/3-gateway-api-httproute.html).
 
 ### Using a custom domain
 
@@ -352,7 +342,7 @@ immediately, the workload may briefly show as degraded until the namespace
 exists. This is expected and clears on its own.
 
 Point `kubectl` at the non-live cluster (see
-[Accessing the Platform](/documentation/getting-started/3-accessing-the-platform.html)),
+[Accessing the Platform](/documentation/getting-started/2-accessing-the-container-platform.html)),
 then check your namespace:
 
 ```bash
@@ -451,8 +441,8 @@ missing directory level means no Application is created. Confirm the file reache
 
 ## Next steps
 
-- [Expose a service with Gateway API (HTTPRoute)](/documentation/getting-started/gateway-api-httproute.html)
-- [Accessing the Platform](/documentation/getting-started/3-accessing-the-platform.html)
+- [Expose a service with Gateway API (HTTPRoute)](/documentation/getting-started/3-gateway-api-httproute.html)
+- [Accessing the Container Platform](/documentation/getting-started/2-accessing-the-container-platform.html)
 
 A later guide will cover the full development-to-live lifecycle using the
 platform test application: publishing the image, promoting a workload from `dev`
