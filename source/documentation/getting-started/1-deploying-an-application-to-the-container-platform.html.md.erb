@@ -62,7 +62,8 @@ namespaces/octo/my-app/
         ├── templates/
         │   ├── deployment.yaml
         │   ├── service.yaml
-        │   └── httproute.yaml           # routes the hostname to the Service
+        │   ├── httproute.yaml           # routes the hostname to the Service
+        │   └── networkpolicy.yaml       # allows gateway traffic to the pods
         └── values/
             └── nonlive/
                 └── dev.yaml             # per-environment overrides + routing
@@ -111,7 +112,11 @@ appVersion: "1.0.0"
 ```
 
 Create `deployment/values.yaml` with the defaults. Pin the image by tag and
-digest so a deploy is reproducible and a moving tag cannot change what runs:
+digest so a deploy is reproducible and a moving tag cannot change what runs.
+Replace the `digest` below with the real digest for the tag you are deploying;
+you can read it with `docker pull nginxinc/nginx-unprivileged:1.27.4 && docker
+inspect --format '{{ index .RepoDigests 0 }}' nginxinc/nginx-unprivileged:1.27.4`
+or from the registry. The placeholder will not pull:
 
 ```yaml
 # Default values for my-app. Overridden per environment by values/<tier>/<env>.yaml
@@ -120,7 +125,8 @@ replicaCount: 1
 image:
   repository: nginxinc/nginx-unprivileged
   tag: "1.27.4"
-  digest: "sha256:<pin-the-digest-you-tested>"
+  # Replace with the real digest for the tag above — the placeholder will not pull.
+  digest: "sha256:REPLACE_WITH_REAL_DIGEST"
 
 resources:
   requests:
@@ -229,9 +235,41 @@ spec:
 Because your hostname (`my-app.octo-nonlive.container-platform.service.justice.gov.uk`)
 falls under that wildcard, you do not need to define your own listener or manage a
 certificate. If you only need to prove the deploy and do not need external access
-yet, you can omit the HTTPRoute and verify the Deployment directly. For a fuller
-walkthrough of routing, see
+yet, you can omit the HTTPRoute and the NetworkPolicy below and verify the
+Deployment directly. For a fuller walkthrough of routing, see
 [Expose a service with Gateway API (HTTPRoute)](/documentation/getting-started/3-gateway-api-httproute.html).
+
+An HTTPRoute alone is not enough to make the app reachable. The baseline creates a
+default-deny ingress NetworkPolicy in your namespace, so you must also allow
+traffic from the gateway namespace to your pods. Without this, the HTTPRoute shows
+`Accepted: True` but requests time out. Add
+`deployment/templates/networkpolicy.yaml`:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: my-app-allow-gateway
+  labels:
+    app: my-app
+spec:
+  podSelector:
+    matchLabels:
+      app: my-app
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: envoy-gateway-system
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.targetPort }}
+```
+
+This permits ingress to your pods only from the shared gateway namespace, on the
+container port. It does not loosen the default-deny for anything else.
 
 ### Using a custom domain
 
@@ -352,7 +390,10 @@ kubectl -n my-app-dev get httproute
 
 The pod should be `Running`, and the HTTPRoute should show an `Accepted`
 condition of `True` (check with `kubectl -n my-app-dev describe httproute
-my-app`). Once DNS has propagated, the app answers at
+my-app`). Confirm the allow-gateway NetworkPolicy is present too
+(`kubectl -n my-app-dev get networkpolicy`): you should see both the baseline
+`default-deny-ingress` and your `my-app-allow-gateway`. Once DNS has propagated,
+the app answers at
 `https://my-app.octo-nonlive.container-platform.service.justice.gov.uk`.
 
 ### Watch the deployment in the ArgoCD UI
@@ -380,8 +421,8 @@ AWS access portal using your Container Platform SSO role.
 
 Look for two items to reach **Synced / Healthy**:
 
-- `baseline-octo-my-app-dev` — creates the namespace, network policy, and role
-  bindings.
+- `baseline-octo-my-app-nonlive` — creates the namespace, network policy, and
+  role bindings.
 - `octo-my-app-dev` — your workload.
 
 Each tile shows the **Sync Status** (Synced or OutOfSync) and **Health Status**
@@ -424,6 +465,14 @@ Your chart is trying to create a resource type that workloads are not allowed to
 create, such as a cluster-scoped resource. Workloads are limited to
 namespace-scoped resources (Deployments, Services, ConfigMaps, Secrets, routes,
 and similar). Remove the cluster-scoped resource from your chart.
+
+### The HTTPRoute is Accepted but requests time out
+
+The route attached correctly, but the baseline default-deny NetworkPolicy is
+dropping traffic from the gateway to your pods. Confirm your
+`my-app-allow-gateway` NetworkPolicy exists (`kubectl -n my-app-dev get
+networkpolicy`) and that its `podSelector` matches your pod labels (`app:
+my-app`) and its port matches the container port (`targetPort`, 8080 here).
 
 ### The pod is stuck in ImagePullBackOff
 
