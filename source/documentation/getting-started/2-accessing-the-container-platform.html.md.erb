@@ -22,20 +22,20 @@ review_in: 6 months
 3. Next to the role that you want to use, click on the `Access keys` link. This will give you options to get your temporary access keys.
 4. Using the access keys, you can configure your local kubectl to access the cluster API. You can use the following command to set up your kubeconfig:
 
-```bash
-aws eks --region <region> update-kubeconfig --name <cluster-name> --alias my-cluster
-```
+    ```bash
+    aws eks --region <region> update-kubeconfig --name <cluster-name> --alias my-cluster
+    ```
 
 Note: this assumes you have copied the temporary access keys into local environment variables. You can also use the `--profile` option to specify a named profile if you have multiple AWS profiles configured, and SSO commands to log in to AWS and retrieve temporary credentials. For more information, see the [AWS CLI documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html).
 
 5. Set the cluster context to the cluster you want to access:
 
-```bash
-kubectl config use-context my-cluster
-```
+    ```bash
+    kubectl config use-context my-cluster
+    ```
 
 6. Run your kubectl commands to interact with the cluster API. For example, you can list the namespaces in the cluster:
 
-```bash
-kubectl get namespaces
-```
+    ```bash
+    kubectl get namespaces
+    ```

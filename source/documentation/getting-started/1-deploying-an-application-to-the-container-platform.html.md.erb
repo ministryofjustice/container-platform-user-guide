@@ -13,7 +13,7 @@ There is no `kubectl apply` and no manual ArgoCD step: the merge is the deploy.
 
 ## How GitOps deployment works
 
-Your workloads live in the `container-platform-environments` repository. ArgoCD
+Your workloads live in the [container-platform-environments](https://github.com/ministryofjustice/container-platform-environments/) repository. ArgoCD
 watches that repository and keeps each cluster matching what is committed. Two
 processes read your files:
 
@@ -40,6 +40,7 @@ You need:
   configuration.
 - `helm` installed locally, to validate your chart before you open a pull
   request.
+- `Docker` installed locally, to validate image SHAs
 
 You do not need cluster credentials to deploy. They are useful for verifying the
 result afterwards. See
@@ -56,8 +57,8 @@ a product called `my-app` with a single service, also called `my-app`, under the
 namespaces/octo/my-app/
 ├── product.yaml                         # declares environments + access
 └── my-app/
-    └── deployment/                      # the service Helm chart
-        ├── Chart.yaml
+    └── deployment/
+        ├── Chart.yaml                   # the service Helm chart
         ├── values.yaml                  # defaults (image, resources, service)
         ├── templates/
         │   ├── deployment.yaml
@@ -384,16 +385,25 @@ Point `kubectl` at the non-live cluster (see
 then check your namespace:
 
 ```bash
-kubectl -n my-app-dev get deploy,pods,svc
-kubectl -n my-app-dev get httproute
+kubectl -n my-app-dev get deploy,pods,svc,httproute,networkpolicy
 ```
 
-The pod should be `Running`, and the HTTPRoute should show an `Accepted`
-condition of `True` (check with `kubectl -n my-app-dev describe httproute
-my-app`). Confirm the allow-gateway NetworkPolicy is present too
-(`kubectl -n my-app-dev get networkpolicy`): you should see both the baseline
-`default-deny-ingress` and your `my-app-allow-gateway`. Once DNS has propagated,
-the app answers at
+- The deployment should show `1/1` `READY`
+- The pod should be `Running`
+- The service should show on port 80, with `<none>` under `EXTERNAL-IP`
+- The networkpolicy should see both:
+  - The `default-deny-ingress` with no `POD-SELECTOR`
+  - Your `my-app-allow-gateway` with your app in the `POD-SELECTOR`
+
+Next, check the HTTPRoute is accepted:
+
+```bash
+kubectl -n my-app-dev describe httproute my-app
+```
+
+You should see an `Accepted` condition of `True` 
+
+Once DNS has propagated, the app answers at
 `https://my-app.octo-nonlive.container-platform.service.justice.gov.uk`.
 
 ### Watch the deployment in the ArgoCD UI
