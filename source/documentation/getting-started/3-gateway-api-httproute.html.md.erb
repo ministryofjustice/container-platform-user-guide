@@ -137,7 +137,7 @@ kubectl delete -f httproute.yaml
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: my-app
+  name: my-product
   labels:
     pod-security.kubernetes.io/enforce: restricted
 ---
@@ -145,7 +145,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: my-app-deployment
-  namespace: my-app
+  namespace: my-product
 spec:
   replicas: 2
   selector:
@@ -178,7 +178,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: my-app
-  namespace: my-app
+  namespace: my-product
 spec:
   selector:
     app: my-app
@@ -192,7 +192,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: my-app-route
-  namespace: my-app
+  namespace: my-product
 spec:
   parentRefs:
     - group: gateway.networking.k8s.io

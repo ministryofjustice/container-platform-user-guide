@@ -13,7 +13,7 @@ There is no `kubectl apply` and no manual ArgoCD step: the merge is the deploy.
 
 ## How GitOps deployment works
 
-Your workloads live in the `container-platform-environments` repository. ArgoCD
+Your workloads live in the [container-platform-environments](https://github.com/ministryofjustice/container-platform-environments/) repository. ArgoCD
 watches that repository and keeps each cluster matching what is committed. Two
 processes read your files:
 
@@ -40,6 +40,7 @@ You need:
   configuration.
 - `helm` installed locally, to validate your chart before you open a pull
   request.
+- `Docker` installed locally, to validate image SHAs
 
 You do not need cluster credentials to deploy. They are useful for verifying the
 result afterwards. See
@@ -49,15 +50,15 @@ for how to get `kubectl` access.
 ## What you will create
 
 A product follows a fixed layout so the platform can find it. This guide creates
-a product called `my-app` with a single service, also called `my-app`, under the
+a product called `my-product` with a single service, also called `my-app`, under the
 `octo` business unit:
 
 ```
-namespaces/octo/my-app/
+namespaces/octo/my-product/
 ├── product.yaml                         # declares environments + access
 └── my-app/
-    └── deployment/                      # the service Helm chart
-        ├── Chart.yaml
+    └── deployment/
+        ├── Chart.yaml                   # the service Helm chart
         ├── values.yaml                  # defaults (image, resources, service)
         ├── templates/
         │   ├── deployment.yaml
@@ -71,11 +72,11 @@ namespaces/octo/my-app/
 
 ## Step 1: Declare the product
 
-Create `namespaces/octo/my-app/product.yaml`. This declares one non-live
+Create `namespaces/octo/my-product/product.yaml`. This declares one non-live
 environment and grants your GitHub team `edit` on the non-live cluster.
 
 ```yaml
-product: my-app
+product: my-product
 bu: octo
 owner:
   team: my-team
@@ -84,7 +85,7 @@ owner:
 environments:
   - name: dev
     cluster: container-platform-octo-nonlive
-    namespace: my-app-dev
+    namespace: my-product-dev
     is_production: false
 access:
   - group: my-team
@@ -100,7 +101,7 @@ in a later guide. The product layout above is the full reference for this deploy
 
 ## Step 2: Create the service Helm chart
 
-Create `namespaces/octo/my-app/my-app/deployment/Chart.yaml`:
+Create `namespaces/octo/my-product/my-app/deployment/Chart.yaml`:
 
 ```yaml
 apiVersion: v2
@@ -322,13 +323,13 @@ tier (`nonlive`) and environment (`dev`), and the platform keys on this file to
 create your Application:
 
 ```yaml
-namespace: my-app-dev
+namespace: my-product-dev
 replicaCount: 1
 host: my-app.octo-nonlive.container-platform.service.justice.gov.uk
 ```
 
 The `namespace` value is required and must match the namespace you declared in
-`product.yaml` (`my-app-dev`). It tells the platform which namespace to deploy
+`product.yaml` (`my-product-dev`). It tells the platform which namespace to deploy
 into. The `host` value is the hostname your HTTPRoute serves. Any other keys
 override the chart defaults for this environment only.
 
@@ -342,7 +343,7 @@ catches template errors and missing required values (such as `host`) without
 waiting on ArgoCD:
 
 ```bash
-cd namespaces/octo/my-app/my-app/deployment
+cd namespaces/octo/my-product/my-app/deployment
 
 # Lint the chart
 helm lint . --values values.yaml --values values/nonlive/dev.yaml
@@ -364,8 +365,8 @@ Commit the new files on a branch, push, and open a pull request against `main` i
 
 ```bash
 git checkout -b deploy-my-app
-git add namespaces/octo/my-app
-git commit -m "Add my-app product and non-live deployment"
+git add namespaces/octo/my-product
+git commit -m "Add my-product running my-app and non-live deployment"
 git push -u origin deploy-my-app
 ```
 
@@ -384,16 +385,25 @@ Point `kubectl` at the non-live cluster (see
 then check your namespace:
 
 ```bash
-kubectl -n my-app-dev get deploy,pods,svc
-kubectl -n my-app-dev get httproute
+kubectl -n my-product-dev get deploy,pods,svc,httproute,networkpolicy
 ```
 
-The pod should be `Running`, and the HTTPRoute should show an `Accepted`
-condition of `True` (check with `kubectl -n my-app-dev describe httproute
-my-app`). Confirm the allow-gateway NetworkPolicy is present too
-(`kubectl -n my-app-dev get networkpolicy`): you should see both the baseline
-`default-deny-ingress` and your `my-app-allow-gateway`. Once DNS has propagated,
-the app answers at
+- The deployment should show `1/1` `READY`
+- The pod should be `Running`
+- The service should show on port 80, with `<none>` under `EXTERNAL-IP`
+- The networkpolicy should show both:
+  - The `default-deny-ingress` with no `POD-SELECTOR`
+  - Your `my-app-allow-gateway` with your app in the `POD-SELECTOR`
+
+Next, check the HTTPRoute is accepted:
+
+```bash
+kubectl -n my-product-dev describe httproute my-app
+```
+
+You should see an `Accepted` condition of `True` 
+
+Once DNS has propagated, the app answers at
 `https://my-app.octo-nonlive.container-platform.service.justice.gov.uk`.
 
 ### Watch the deployment in the ArgoCD UI
@@ -421,7 +431,7 @@ AWS access portal using your Container Platform SSO role.
 
 Look for two items to reach **Synced / Healthy**:
 
-- `baseline-octo-my-app-nonlive` — creates the namespace, network policy, and
+- `baseline-octo-my-product-nonlive` — creates the namespace, network policy, and
   role bindings.
 - `octo-my-app-dev` — your workload.
 
@@ -456,7 +466,7 @@ to whatever is in Git.
 ### The workload is stuck "Missing" or degraded on the namespace
 
 The namespace has not been created yet. Confirm your `product.yaml` is valid and
-sits at `namespaces/octo/my-app/product.yaml`. The workload cannot create its own
+sits at `namespaces/octo/my-product/product.yaml`. The workload cannot create its own
 namespace; it waits for the baseline to create it first.
 
 ### A deploy fails with a "forbidden" error
@@ -470,7 +480,7 @@ and similar). Remove the cluster-scoped resource from your chart.
 
 The route attached correctly, but the baseline default-deny NetworkPolicy is
 dropping traffic from the gateway to your pods. Confirm your
-`my-app-allow-gateway` NetworkPolicy exists (`kubectl -n my-app-dev get
+`my-app-allow-gateway` NetworkPolicy exists (`kubectl -n my-product-dev get
 networkpolicy`) and that its `podSelector` matches your pod labels (`app:
 my-app`) and its port matches the container port (`targetPort`, 8080 here).
 
@@ -484,7 +494,7 @@ from.
 ### Changes merged but nothing happened
 
 Check the values file path is exactly
-`namespaces/octo/my-app/my-app/deployment/values/nonlive/dev.yaml`. An extra or
+`namespaces/octo/my-product/my-app/deployment/values/nonlive/dev.yaml`. An extra or
 missing directory level means no Application is created. Confirm the file reached
 `main`.
 
