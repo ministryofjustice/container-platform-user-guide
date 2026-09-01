@@ -1,0 +1,31 @@
+---
+title: Gateway API and Envoy Proxy
+last_reviewed_on: 2026-09-01
+review_in: 6 months
+---
+
+# <%= current_page.data.title %>
+
+## What is Gateway API?
+
+Gateway API is the Kubernetes API for service networking. It lets you define how external traffic reaches services in your cluster using resources such as `Gateway` and `HTTPRoute`.
+
+In the older Cloud Platform model, a single nginx `Ingress` resource described both where traffic entered the cluster and how requests were routed to services. With Gateway API, these responsibilities are split across dedicated resources.
+
+See the Kubernetes documentation: [Gateway API](https://kubernetes.io/docs/concepts/services-networking/gateway/).
+
+## What is Envoy Gateway?
+
+Envoy Gateway is the Kubernetes-native gateway controller built on top of Envoy Proxy. In Container Platform, Envoy Gateway is part of the ingress path that receives requests and forwards them to your service based on your `HTTPRoute`.
+
+In practice, the platform manages the shared traffic entry point (`ListenerSet`, `Gateway`, and Envoy Gateway), while application teams manage `HTTPRoute` rules for their own hostnames and services.
+
+See the Envoy Gateway documentation: [Envoy Gateway docs](https://gateway.envoyproxy.io/docs/).
+
+You will make use of the shared platform `ListenerSet` called `default-listenerset` in the `envoy-gateway-system` namespace. See the [ListenerSet documentation](https://gateway-api.sigs.k8s.io/guides/user-guides/listener-set/) for more information.
+
+## How do I use Gateway API and Envoy Proxy 
+
+Thes are defined in `httproute.yaml` and `networkpolicy.yaml` files.
+
+See [Deploying an application to the Container Platform](/documentation/getting-started/1-deploying-an-application-to-the-container-platform) for an example.
