@@ -6,4 +6,18 @@ review_in: 6 months
 
 # <%= current_page.data.title %>
 
-This is a placeholder
+The Container Platform is a shared Kubernetes platform for deploying and
+running containerised applications. Clusters are organised by business unit and
+separated into production and non-production workloads.
+
+The platform uses a GitOps deployment workflow. You declare your application,
+environment, and access requirements in Git, then open a pull request. When it
+is merged, ArgoCD deploys the workload to the target cluster and keeps the
+cluster aligned with the configuration in Git.
+
+## Architecture diagram
+
+![Container Platform architecture overview](https://raw.githubusercontent.com/ministryofjustice/cloud-platform/main/architecture/container-platform/diagrams/container-platform-overview.png)
+
+To get started, see [Deploying an application to the Container Platform](/documentation/getting-started/1-deploying-an-application-to-the-container-platform.html).
+For help selecting a target cluster, see [What Cluster Should I Use?](/documentation/overview/what-cluster-should-i-use.html).
