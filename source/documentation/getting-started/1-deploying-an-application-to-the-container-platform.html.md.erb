@@ -237,8 +237,8 @@ Because your hostname (`my-app.octo-nonlive.container-platform.service.justice.g
 falls under that wildcard, you do not need to define your own listener or manage a
 certificate. If you only need to prove the deploy and do not need external access
 yet, you can omit the HTTPRoute and the NetworkPolicy below and verify the
-Deployment directly. For a fuller walkthrough of routing, see
-[Expose a service with Gateway API (HTTPRoute)](/documentation/getting-started/3-gateway-api-httproute.html).
+Deployment directly. For a more information about routing, see
+[Gateway API and Envoy Proxy](/documentation/networking/gateway-api-envoy-proxy).
 
 An HTTPRoute alone is not enough to make the app reachable. The baseline creates a
 default-deny ingress NetworkPolicy in your namespace, so you must also allow
@@ -500,7 +500,6 @@ missing directory level means no Application is created. Confirm the file reache
 
 ## Next steps
 
-- [Expose a service with Gateway API (HTTPRoute)](/documentation/getting-started/3-gateway-api-httproute.html)
 - [Accessing the Container Platform](/documentation/getting-started/2-accessing-the-container-platform.html)
 
 A later guide will cover the full development-to-live lifecycle using the
