@@ -374,6 +374,14 @@ Once the pull request is reviewed and merged to `main`, the platform picks up th
 change automatically. Non-live workloads sync on their own (with prune and
 self-heal), so no further action is needed after the merge.
 
+### How long it takes
+
+After the merge, expect your change to be live on the non-live cluster within
+roughly 1 to 4 minutes. ArgoCD checks Git on a fixed interval (about 3 minutes),
+so the exact time depends on where your merge lands in that cycle. Applying the
+manifests and starting the pod then takes a few more seconds. This applies to
+both new apps and changes to existing ones.
+
 ## Step 6: Verify the deployment
 
 The namespace is created first, then the workload deploys into it. If you check
