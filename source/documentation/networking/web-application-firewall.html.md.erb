@@ -1,3 +1,11 @@
+---
+title: Web Application Firewall Overview
+last_reviewed_on: 2026-09-08
+review_in: 6 months
+---
+
+# <%= current_page.data.title %>
+
 # Web application firewall
 
 The Container Platform provides a Web Application Firewall (WAF) using [Coraza](https://coraza.io/) and the [OWASP Core Rule Set (CRS)](https://coreruleset.org/).
@@ -316,25 +324,6 @@ WAF rule triggered
 ```
 
 WAF events include the triggered rule ID. You can use this ID to identify the OWASP CRS rule when investigating false positives.
-
-> **TODO Note:** Add log-search instructions here once the WAF logging integration is in place.
-
-## Investigate false positives
-
-A false positive occurs when the WAF identifies legitimate application traffic as malicious.
-
-If you believe a WAF rule is blocking legitimate traffic:
-
-1. configure your `HTTPRoute` to use `DetectionOnly`
-2. reproduce representative application traffic
-3. review the WAF events
-4. identify the rule ID causing the match
-5. determine why the legitimate request triggered the rule
-6. add an application-specific exclusion if required
-7. test the change
-8. change `SecRuleEngine` back to `On`
-
-Avoid disabling the entire WAF when a specific rule exclusion can resolve the issue.
 
 ## Test your WAF
 
