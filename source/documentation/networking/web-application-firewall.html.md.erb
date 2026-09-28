@@ -56,6 +56,8 @@ Platform Gateway
 
 If you want to retain the standard OWASP CRS protection, your application-specific policy must continue to load the OWASP CRS configuration and rules.
 
+Your policy must also include the platform directive, `Include /etc/coraza/cp/coraza-cp.conf`, to keep the platform-managed rules and exceptions. This is enforced by a Gatekeeper policy: a policy that omits it will be rejected. See [Web Application Firewall Rules and Exceptions](/documentation/networking/web-application-firewall-rules-and-exceptions.html) for more information.
+
 A complete application-specific WAF policy looks like this:
 
 ```yaml
@@ -78,6 +80,7 @@ spec:
           - SecRuleEngine On
           - Include @crs-setup.conf
           - Include @owasp_crs/*.conf
+          - Include /etc/coraza/cp/coraza-cp.conf
 
           # Add application-specific configuration below
 ```
@@ -146,6 +149,8 @@ Requests that trigger WAF rules are logged but continue to your application.
 
 Other `HTTPRoute` resources continue to use their own effective WAF configuration and are not changed by this policy.
 
+`DetectionOnly` disables enforcement for your entire `HTTPRoute`, not just the change you are testing. While it is set, your application is not protected from any WAF-detectable attacks, including the standard OWASP CRS rules and the platform-managed rules and exceptions. Treat it as a temporary, short-lived state for testing changes, and switch back to `On` once you are confident in your configuration.
+
 ## Use blocking mode
 
 Blocking mode is enabled by default, so you do not normally need to create an `EnvoyExtensionPolicy`.
@@ -165,26 +170,7 @@ Requests that trigger blocking rules receive an HTTP `403 Forbidden` response an
 
 ## Add application-specific WAF rules
 
-Add application-specific Coraza directives after the standard OWASP CRS configuration in your `EnvoyExtensionPolicy`.
-
-For example, to exclude OWASP CRS rule `942100`:
-
-```yaml
-directives:
-  - Include @coraza.conf
-  - SecRuleEngine On
-  - Include @crs-setup.conf
-  - Include @owasp_crs/*.conf
-
-  # Application-specific configuration
-  - SecRuleRemoveById 942100
-```
-
-Removing an OWASP CRS rule reduces the protection provided by the WAF. Where possible, make exclusions as specific as possible rather than disabling a rule for your entire application.
-
-We recommend testing application-specific changes using `DetectionOnly` before enabling blocking mode.
-
-For information about available Coraza directives and writing custom rules, see the [Coraza documentation](https://coraza.io/docs/).
+If you need to add your own rules or exceptions to your application-specific WAF configuration, see [Web Application Firewall Rules and Exceptions](/documentation/networking/web-application-firewall-rules-and-exceptions.html). This also explains the platform directive your `EnvoyExtensionPolicy` must include to keep the platform-managed rules and exceptions.
 
 ## Disable the WAF
 
