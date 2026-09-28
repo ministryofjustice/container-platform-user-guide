@@ -1,0 +1,82 @@
+---
+title: Web Application Firewall Rules and Exceptions
+last_reviewed_on: 2026-09-11
+review_in: 6 months
+---
+
+# <%= current_page.data.title %>
+
+Every `HTTPRoute` on the platform is protected by a platform-managed Web Application Firewall (WAF), applied by default at the Gateway. This includes the OWASP Core Rule Set (CRS) and a list of custom platform rules.
+
+For most applications, this default protection is all you need, and you do not have to do anything else.
+
+See [Web Application Firewall](/documentation/networking/web-application-firewall.html) for how application-specific `EnvoyExtensionPolicy` resources work, why they are not merged with the platform default, and the platform directive they must include to keep the platform-managed rules and exceptions. This page covers how to add your own rules and exceptions on top of that.
+
+## Adding your own rules and exceptions
+
+Adding a rule and adding an exception are essentially the same process: both are added as extra Coraza directives after the platform include directive in your `EnvoyExtensionPolicy`.
+
+### Adding a new rule
+
+Add a `SecRule` stanza after the platform include directive. Rule IDs should be unique and should not overlap with OWASP CRS rule IDs.
+
+The following example adds a new `SecRule` that blocks a specific endpoint:
+
+```yaml
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyExtensionPolicy
+metadata:
+  name: waf-customization
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: my-app
+  dynamicModule:
+    - name: composer
+      filterName: coraza-waf
+      config:
+        directives:
+          - Include @coraza.conf
+          - SecRuleEngine On
+          - Include @crs-setup.conf
+          - Include @owasp_crs/*.conf
+          - Include /etc/coraza/cp/coraza-cp.conf
+          - SecRule REQUEST_URI "@rx /wp-login.php" "id:1000001,phase:1,deny,status:403,log,auditlog,msg:'Block access to legacy admin endpoint'"
+```
+
+### Adding a new exception
+
+If a specific request is being blocked but needs to reach your application, first find the rule ID that is blocking it. See [Web Application Firewall Logging and Troubleshooting](/documentation/networking/web-application-firewall-logs-and-trouble.html) for how to identify the triggered rule ID from the WAF logs.
+
+Add an exception in the same way as a rule, using `SecRuleRemoveById` or a more targeted condition. Keep exceptions as narrow as possible and avoid broad removals unless there is a clear and justified need.
+
+```yaml
+directives:
+  - Include @coraza.conf
+  - SecRuleEngine On
+  - Include @crs-setup.conf
+  - Include @owasp_crs/*.conf
+  - Include /etc/coraza/cp/coraza-cp.conf
+  - SecRuleRemoveById 920420
+```
+
+This disables a specific rule ID for your `HTTPRoute` only. If the exception should only apply in certain circumstances, prefer a scoped rule such as a request URI, header, or argument match rather than removing the rule entirely.
+
+We recommend testing new rules and exceptions using `DetectionOnly` mode before enabling blocking mode. See [Web Application Firewall](/documentation/networking/web-application-firewall.html) for how to use `DetectionOnly` mode and the risks of leaving it enabled.
+
+## Things to consider
+
+- Only create your own `EnvoyExtensionPolicy` if the default platform WAF does not meet your application's needs, for example if you need application-specific rules or exceptions.
+- Always include the platform directive shown above, otherwise your policy will be rejected.
+- Test any custom rules or exceptions thoroughly, as an overly permissive configuration can weaken your application's protection.
+- Check the [Web Application Firewall Logging and Troubleshooting](/documentation/networking/web-application-firewall-logs-and-trouble.html) page if you need to diagnose blocked requests after making changes.
+
+## Further information
+
+For more information, see:
+
+- [Web Application Firewall](/documentation/networking/web-application-firewall.html)
+- [Web Application Firewall Logging and Troubleshooting](/documentation/networking/web-application-firewall-logs-and-trouble.html)
+- [Coraza documentation](https://coraza.io/docs/)
+- [OWASP Core Rule Set documentation](https://coreruleset.org/docs/)
