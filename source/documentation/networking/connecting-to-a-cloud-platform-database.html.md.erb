@@ -205,9 +205,20 @@ Three things are different when an application connects.
 
 ### Credentials
 
-The Container Platform does not yet provide a secrets management mechanism. There is no
-External Secrets Operator and no sealed secrets, so the credentials cannot be held in Git
-and have to be created directly against the cluster.
+> **This is an interim approach, not a finished pattern.**
+>
+> The Container Platform does not yet provide a secrets management mechanism. There is no
+> External Secrets Operator and no sealed secrets, so credentials cannot be held in Git and
+> have to be created directly against the cluster.
+>
+> The team is working on a proper mechanism. What follows is a placeholder to unblock you
+> until that lands, and it will be replaced when it does.
+>
+> **Please talk to us in
+> [#container-platform-alpha-users](https://moj.enterprise.slack.com/archives/C0BKZHMQNRK)
+> before you start**, whether you want to use the approach below, have a different one in
+> mind, or just have questions. We would rather hear from you early, and knowing how teams
+> are handling this shapes what we build.
 
 Read the values from the RDS secret in your Cloud Platform namespace and create a secret in
 your Container Platform namespace:
@@ -228,9 +239,9 @@ kubectl -n [your container platform namespace] create secret generic [your app]-
 Using the standard `PG*` variable names means most PostgreSQL clients pick them up without
 you building a connection string, so no credential needs to appear in your code.
 
-> This secret is not managed by Argo CD. It will not be recreated if the namespace is
-> rebuilt, and it is invisible to code review. Keep a note of how to recreate it. Secrets
-> management is tracked separately, and this step will be replaced when it lands.
+> Because this secret is created by hand, Argo CD does not manage it. It will not be
+> recreated if the namespace is rebuilt, and it is invisible to code review. Keep a note of
+> how to recreate it.
 
 Never commit credentials to a repository or put them in plain manifests.
 
