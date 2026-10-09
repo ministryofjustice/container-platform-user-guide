@@ -17,7 +17,7 @@ These steps should be carried out in your Container Platform namespace. To check
 kubectl config current-context
 ```
 
-## Step 1: run a port-forward pod
+## Step 1: Run a port-forward pod
 
 Run this in your Container Platform namespace, replacing `[your container platform namespace]`
 and `[your database hostname]`. The hostname appears in **both** `REMOTE_HOST` and
@@ -46,7 +46,7 @@ kubectl -n [your container platform namespace] logs port-forward-pod
 
 You should see `Socat started listening on 5432`.
 
-## Step 2: forward traffic from your machine
+## Step 2: Forward traffic from your machine
 
 ```bash
 kubectl -n [your container platform namespace] port-forward port-forward-pod 5432:5432
@@ -54,7 +54,7 @@ kubectl -n [your container platform namespace] port-forward port-forward-pod 543
 
 Leave this running while you use the database.
 
-## Step 3: connect
+## Step 3: Connect
 
 Then connect as if the database were local. E.g for Postgres:
 
@@ -78,7 +78,7 @@ mysql --protocol=TCP \
 
 You will be prompted for the password.
 
-## Step 5: delete the port-forward pod
+## Step 4: Delete the port-forward pod
 
 Terminate your port-forwarding session and then run:
 
