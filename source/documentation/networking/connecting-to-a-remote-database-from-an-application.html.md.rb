@@ -8,11 +8,10 @@ review_in: 6 months
 
 ## Connecting from an application
 
-The steps in [Connecting to a Remote Database With A Port Forwarding Pod](/documentation/networking/connecting-to-a-remote-database-with-port-forward.html)
-are for reaching a database from your own machine. A deployed application
-uses the same network path, so no further network changes are needed.
+To connect  your application to an RDS outside of the Container Platform, that RDS must be configured to allow the connection, see the relevant guide for your situation: 
 
-Three things are different when an application connects.
+- [Connecting to a Cloud Platform database](/documentation/networking/connecting-to-a-cloud-platform-database.html)
+- [Connecting to a Modernisation Platform database](/documentation/networking/connecting-to-a-modernisation-platform-database.html)
 
 ### Credentials
 
@@ -130,3 +129,7 @@ nothing.
 ## Getting help
 
 Ask in [#container-platform-alpha-users](https://moj.enterprise.slack.com/archives/C0BKZHMQNRK).
+
+## See Also
+
+- [Connecting to a Remote Database With A Port Forwarding Pod](/documentation/networking/connecting-to-a-remote-database-with-port-forward.html)

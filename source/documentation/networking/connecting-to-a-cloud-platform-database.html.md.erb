@@ -14,7 +14,7 @@ There are two parts to it:
 
 1. Allow your cluster's address range through the database's security group. This is a
    Terraform change in your Cloud Platform namespace.
-2. Connect to the database. To do this from your own machine, use a port-forward pod.
+2. Connect to the database. You can connect your application, or use a port-forward pod to connect from your own machine.
 
 ## Before you start
 
@@ -139,4 +139,7 @@ password: {{index .data "database_password" | base64decode}}
 
 ## Step 3: Connect
 
-Follow the instructions in [Connecting to a Remote Database With A Port Forwarding Pod](/documentation/networking/connecting-to-a-remote-database-with-port-forward.html)
+Follow the instructions below depending on how you wish to connect:
+
+- [Connecting to a Remote Database From an Application](/documentation/networking/connecting-to-a-remote-database-from-an-application.html)
+- [Connecting to a Remote Database With A Port Forwarding Pod](/documentation/networking/connecting-to-a-remote-database-with-port-forward.html)
