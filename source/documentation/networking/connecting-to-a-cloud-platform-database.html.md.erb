@@ -1,6 +1,6 @@
 ---
 title: Connecting to a Cloud Platform database
-last_reviewed_on: 2026-10-07
+last_reviewed_on: 2026-10-09
 review_in: 6 months
 ---
 
@@ -14,7 +14,7 @@ There are two parts to it:
 
 1. Allow your cluster's address range through the database's security group. This is a
    Terraform change in your Cloud Platform namespace.
-2. Connect to the database. To do this from your own machine, use a port-forward pod.
+2. Connect to the database. You can connect your application, or use a port-forward pod to connect from your own machine.
 
 ## Before you start
 
@@ -29,7 +29,7 @@ You need:
 - the ability to raise a pull request against
   [cloud-platform-environments](https://github.com/ministryofjustice/cloud-platform-environments)
 
-## Step 1: allow your cluster to reach the database
+## Step 1: Allow your cluster to reach the database
 
 In your Cloud Platform namespace, add a `security-group.tf` file to the `resources` directory:
 
@@ -117,228 +117,29 @@ If you use an engine that is not listed, ask in
 before you start. Traffic between the platforms passes through an inspection firewall that
 allows these ports only, and anything else is dropped without an error.
 
-## Step 2: run a port-forward pod
+## Step 2: Get Your Target RDS Details
 
-The remaining steps use two different clusters. Steps 2, 3 and 5 run against your Container
-Platform cluster. Step 4 reads a secret from your Cloud Platform namespace. Check which
-cluster you are pointed at before each step:
+You will need the following details to connect:
 
-```bash
-kubectl config current-context
-```
+- hostname
+- dbname
+- username
+- password
 
-Run this in your Container Platform namespace, replacing `[your container platform namespace]`
-and `[your database hostname]`. The hostname appears in **both** `REMOTE_HOST` and
-`overrides` sections. You can find the hostname in the `rds_instance_address` field of your
-RDS secret in your Cloud Platform namespace.
-
-```bash
-kubectl -n [your container platform namespace] run port-forward-pod \
-  --image=ministryofjustice/port-forward \
-  --port=5432 \
-  --env="REMOTE_HOST=[your database hostname]" \
-  --env="LOCAL_PORT=5432" \
-  --env="REMOTE_PORT=5432" \
-  --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"port-forward-pod","image":"ministryofjustice/port-forward","ports":[{"containerPort":5432}],"env":[{"name":"REMOTE_HOST","value":"[your database hostname]"},{"name":"LOCAL_PORT","value":"5432"},{"name":"REMOTE_PORT","value":"5432"}],"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}'
-```
-
-> This command differs from the equivalent one in the
-> [Cloud Platform user guide](https://user-guide.cloud-platform.service.justice.gov.uk/documentation/other-topics/rds-external-access.html).
-> Container Platform enforces the `restricted` Pod Security Standard, so the security
-> settings have to be set explicitly. Without the `--overrides` the pod is rejected.
-
-Check it started:
-
-```bash
-kubectl -n [your container platform namespace] logs port-forward-pod
-```
-
-You should see `Socat started listening on 5432`.
-
-## Step 3: forward traffic from your machine
-
-```bash
-kubectl -n [your container platform namespace] port-forward port-forward-pod 5432:5432
-```
-
-Leave this running while you use the database.
-
-## Step 4: connect
-
-Get the credentials from the RDS secret in your **Cloud Platform** namespace:
+Get the credentials and other details from the RDS secret in your **Cloud Platform** namespace:
 
 ```bash
 kubectl -n [your cloud platform namespace] get secret [your rds secret] -o go-template='
+rds_instance_address: {{index .data "rds_instance_address" | base64decode}}
 dbname: {{index .data "database_name" | base64decode}}
 username: {{index .data "database_username" | base64decode}}
 password: {{index .data "database_password" | base64decode}}
 '
 ```
 
-Then connect as if the database were local:
+## Step 3: Connect
 
-```bash
-psql --host localhost --port 5432 \
-  --dbname [your database name] \
-  --username [your database username] \
-  --password
-```
+Follow the instructions below depending on how you wish to connect:
 
-You will be prompted for the password.
-
-## Step 5: delete the port-forward pod
-
-```bash
-kubectl -n [your container platform namespace] delete pod port-forward-pod
-```
-
-Please delete it when you have finished. Pods created this way are not managed by a
-deployment and will be removed when the node they run on is replaced, so do not rely on one
-staying up.
-
-## Connecting from an application
-
-The steps above are for reaching a database from your own machine. A deployed application
-uses the same network path, so no further network changes are needed.
-
-Three things are different when an application connects.
-
-### Credentials
-
-> **This is an interim approach, not a finished pattern.**
->
-> The Container Platform does not yet provide a secrets management mechanism. There is no
-> External Secrets Operator and no sealed secrets, so credentials cannot be held in Git and
-> have to be created directly against the cluster.
->
-> The team is working on a proper mechanism. What follows is a placeholder to unblock you
-> until that lands, and it will be replaced when it does.
->
-> **Please talk to us in
-> [#container-platform-alpha-users](https://moj.enterprise.slack.com/archives/C0BKZHMQNRK)
-> before you start**, whether you want to use the approach below, have a different one in
-> mind, or just have questions. We would rather hear from you early, and knowing how teams
-> are handling this shapes what we build.
-
-Read the values from the RDS secret in your Cloud Platform namespace and create a secret in
-your Container Platform namespace:
-
-```bash
-CP2=live.cloud-platform.service.justice.gov.uk
-get() { kubectl --context $CP2 -n [your cloud platform namespace] get secret [your rds secret] -o jsonpath="{.data.$1}" | base64 -d; }
-
-kubectl -n [your container platform namespace] create secret generic [your app]-db \
-  --from-literal=PGHOST="$(get rds_instance_address)" \
-  --from-literal=PGPORT=5432 \
-  --from-literal=PGDATABASE="$(get database_name)" \
-  --from-literal=PGUSER="$(get database_username)" \
-  --from-literal=PGPASSWORD="$(get database_password)" \
-  --from-literal=PGSSLMODE=verify-full
-```
-
-Using the standard `PG*` variable names means most PostgreSQL clients pick them up without
-you building a connection string, so no credential needs to appear in your code.
-
-> Because this secret is created by hand, Argo CD does not manage it. It will not be
-> recreated if the namespace is rebuilt, and it is invisible to code review. Keep a note of
-> how to recreate it.
-
-Never commit credentials to a repository or put them in plain manifests.
-
-### Verifying the database certificate
-
-Amazon RDS presents a certificate signed by a private Amazon CA, not a public one. It is not
-in the trust store of a normal container image, so a client that verifies properly will
-reject the connection until you supply the CA.
-
-The Container Platform does not currently distribute CA bundles. cert-manager runs on the
-cluster, but it issues certificates for your own services rather than telling your
-application which external authorities to trust. You supply the bundle yourself.
-
-Download the bundle for your region from the
-[certificate bundles table](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions)
-in the AWS documentation, commit it to your deployment directory, and mount it as a
-ConfigMap. The certificates are public, so a ConfigMap is correct and a Secret is not.
-
-```yaml
-      containers:
-        - name: my-app
-          env:
-            - name: PGSSLMODE
-              value: verify-full
-            - name: PGSSLROOTCERT
-              value: /etc/rds/rds-ca.pem
-          envFrom:
-            - secretRef:
-                name: my-app-db
-          volumeMounts:
-            - name: rds-ca
-              mountPath: /etc/rds
-              readOnly: true
-      volumes:
-        - name: rds-ca
-          configMap:
-            name: my-app-rds-ca
-```
-
-Set `PGSSLMODE` in the deployment rather than relying on the secret alone. If it is only in
-the secret, anyone recreating that secret without it silently drops to `prefer`, which
-accepts any certificate.
-
-`verify-full` is worth the extra step. `require` encrypts the connection but does not check
-who the server is, so it is no defence against anything on the path between the two
-platforms.
-
-### Query safety
-
-Use parameterised queries. Building SQL by concatenating user input is the most common cause
-of serious vulnerabilities in applications of this shape, and the network work above does
-nothing to protect you from it.
-
-### A working example
-
-The [test app](https://github.com/ministryofjustice/container-platform-test-app) connects to
-a Cloud Platform database using this pattern, and its deployment lives in
-[container-platform-environments](https://github.com/ministryofjustice/container-platform-environments/tree/main/namespaces/octo/test-app).
-
-## Troubleshooting
-
-**The connection times out.**
-
-Check the security group is attached to the instance, not just created. This is the most
-common cause. Confirm `vpc_security_group_ids` is set on your RDS module and that the change
-has been applied:
-
-```bash
-aws rds describe-db-instances --db-instance-identifier [your database identifier] --query 'DBInstances[0].VpcSecurityGroups[*].VpcSecurityGroupId' --output text
-aws ec2 describe-security-groups --group-ids sg-xxxxxxxxxxxxxxxxx sg-yyyyyyyyyyyyyyyyy --output table
-```
-
-Then check you used the node range for your cluster from the table above, rather than a pod
-address.
-
-**The pod is rejected with a `violates PodSecurity "restricted:latest"` error.**
-
-You have run the command without the `--overrides` section. Use the full command in step 2.
-
-**`socat` fails to start, or the pod crashes.**
-
-`LOCAL_PORT` must be above 1024. The container does not run as root and cannot bind to
-privileged ports.
-
-**An application fails with `certificate verify failed` or `SSL error`.**
-
-The RDS certificate authority is not in your image's trust store. Mount the bundle for your
-region and point `PGSSLROOTCERT` at it, as described in
-[Verifying the database certificate](#verifying-the-database-certificate). Check the file is
-actually present in the container, and that you took the bundle for the right region.
-
-**The connection works but your application ignores the database.**
-
-Check the image you deployed contains the database code. Pinning an image by digest is
-right, but a digest from before the feature was added will start cleanly and silently do
-nothing.
-
-## Getting help
-
-Ask in [#container-platform-alpha-users](https://moj.enterprise.slack.com/archives/C0BKZHMQNRK).
+- [Connecting to a Remote Database From an Application](/documentation/networking/connecting-to-a-remote-database-from-an-application.html)
+- [Connecting to a Remote Database With A Port Forwarding Pod](/documentation/networking/connecting-to-a-remote-database-with-port-forward.html)

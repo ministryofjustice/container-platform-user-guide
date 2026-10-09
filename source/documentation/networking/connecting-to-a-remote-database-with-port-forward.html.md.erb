@@ -1,0 +1,128 @@
+---
+title: Connecting to a Remote Database With A Port Forwarding Pod
+last_reviewed_on: 2026-10-09
+review_in: 6 months
+---
+
+# <%= current_page.data.title %>
+
+These instructions are to run a port-forward pod to connect to an RDS outside of the Container Platform. That RDS must be configured to allow the connection, see the relevant guide for your situation: 
+
+- [Connecting to a Cloud Platform database](/documentation/networking/connecting-to-a-cloud-platform-database.html)
+- [Connecting to a Modernisation Platform database](/documentation/networking/connecting-to-a-modernisation-platform-database.html)
+
+The following steps should be carried out in your Container Platform namespace. To check which cluster you are pointing at, run `kubectl config current-context`.
+
+## Step 1: Run a port-forward pod
+
+Run this in your Container Platform namespace, replacing `[your container platform namespace]`
+and `[your database hostname]`. The hostname appears in **both** `REMOTE_HOST` and
+`overrides` sections. 
+
+```bash
+kubectl -n [your container platform namespace] run port-forward-pod \
+  --image=ministryofjustice/port-forward \
+  --port=5432 \
+  --env="REMOTE_HOST=[your database hostname]" \
+  --env="LOCAL_PORT=5432" \
+  --env="REMOTE_PORT=5432" \
+  --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"port-forward-pod","image":"ministryofjustice/port-forward","ports":[{"containerPort":5432}],"env":[{"name":"REMOTE_HOST","value":"[your database hostname]"},{"name":"LOCAL_PORT","value":"5432"},{"name":"REMOTE_PORT","value":"5432"}],"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}'
+```
+
+> This command differs from the equivalent one in the
+> [Cloud Platform user guide](https://user-guide.cloud-platform.service.justice.gov.uk/documentation/other-topics/rds-external-access.html).
+> Container Platform enforces the `restricted` Pod Security Standard, so the security
+> settings have to be set explicitly. Without the `--overrides` the pod is rejected.
+
+Check it started:
+
+```bash
+kubectl -n [your container platform namespace] logs port-forward-pod
+```
+
+You should see `Socat started listening on 5432`.
+
+## Step 2: Forward traffic from your machine
+
+Run the port-forward command, altering the target port to suit your database:
+
+```bash
+kubectl -n [your container platform namespace] port-forward port-forward-pod 5432:5432
+```
+
+Leave this running while you use the database.
+
+## Step 3: Connect
+
+Then connect as if the database were local. E.g for Postgres:
+
+```bash
+psql --host localhost \
+  --port 5432 \
+  --dbname [your database name] \
+  --username [your database username] \
+  --password
+```
+
+Or for MySQL:
+
+```bash
+mysql --protocol=TCP \
+  -h localhost \
+  -P 3306 \
+  -u admin \
+  -p
+```
+
+You will be prompted for the password.
+
+## Step 4: Delete the port-forward pod
+
+Terminate your port-forwarding session and then run:
+
+```bash
+kubectl -n [your container platform namespace] delete pod port-forward-pod
+```
+
+Please delete it when you have finished. Pods created this way are not managed by a
+deployment and will be removed when the node they run on is replaced, so do not rely on one
+staying up.
+
+## Connecting from an application
+
+The steps above are for reaching a database from your own machine. A deployed application
+uses the same network path, so no further network changes are needed, but there are other differences. See
+[Connecting to a Remote Database From an Application](/documentation/networking/connecting-to-a-remote-database-from-an-application.html)
+for further advice.
+
+## Troubleshooting
+
+**The connection times out.**
+
+Check the security group is attached to the instance, not just created. This is the most
+common cause. Confirm `vpc_security_group_ids` is set on your RDS module and that the change
+has been applied:
+
+```bash
+aws rds describe-db-instances --db-instance-identifier [your database identifier] --query 'DBInstances[0].VpcSecurityGroups[*].VpcSecurityGroupId' --output text
+aws ec2 describe-security-groups --group-ids sg-xxxxxxxxxxxxxxxxx sg-yyyyyyyyyyyyyyyyy --output table
+```
+
+See [Connecting to a Cloud Platform database](/documentation/networking/connecting-to-a-cloud-platform-database.html) or
+[Connecting to a Modernisation Platform database](/documentation/networking/connecting-to-a-modernisation-platform-database.html) for
+setting up security group instructions.
+
+Check you used the node range for your cluster, rather than a pod address.
+
+**The pod is rejected with a `violates PodSecurity "restricted:latest"` error.**
+
+You have run the command without the `--overrides` section. Use the full command in step 1.
+
+**`socat` fails to start, or the pod crashes.**
+
+`LOCAL_PORT` must be above 1024. The container does not run as root and cannot bind to
+privileged ports.
+
+## Getting help
+
+Ask in [#container-platform-alpha-users](https://moj.enterprise.slack.com/archives/C0BKZHMQNRK).
