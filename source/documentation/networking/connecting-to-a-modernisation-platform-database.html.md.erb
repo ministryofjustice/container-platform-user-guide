@@ -22,6 +22,69 @@ You need:
 
 - a namespace on a Container Platform nonlive cluster.
   See [Deploying an application to the Container Platform](https://user-guide.development.container-platform.service.justice.gov.uk/documentation/getting-started/1-deploying-an-application-to-the-container-platform.html)
-- an RDS instance on the Modernisation Platform. See [Deploying an RDS Instance in the Modernisation Platform](https://user-guide.modernisation-platform.service.justice.gov.uk/user-guide/how-to-use-rds-module.html#rds-instance-module)
+- an RDS instance on the Modernisation Platform. See [Creating resources in the Modernisation Platform](https://user-guide.modernisation-platform.service.justice.gov.uk/user-guide/creating-resources.html)
 - the ability to raise a pull request against
   [modernisation-platform-environments](https://github.com/ministryofjustice/modernisation-platform-environments)
+
+## Step 1: allow your cluster to reach the database
+
+Find the security group config in your Modernisation Platform RDS code (or add it if not already present). For example:
+
+```hcl
+resource "aws_security_group" "rds-example" {
+  description = "RDS Security Group"
+  vpc_id      = data.aws_vpc.shared.id
+}
+```
+
+Add in the security group rule for the cluster you are connecting from. For example:
+
+```hcl
+resource "aws_security_group_rule" "rds_example_ingress_cp3_octo_nonlive" {
+  description              = "container-platform-octo-nonlive nodes"
+  type                     = "ingress"
+  from_port                = 3306
+  to_port                  = 3306
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.rds-example.id
+  cidr_blocks              = ["10.195.48.0/20"]
+}
+```
+
+You **must** change `cidr_blocks` to your Container Platform cluster:
+
+| Cluster | Address range |
+| --- | --- |
+| `container-platform-octo-nonlive` | `10.195.48.0/20` |
+| `container-platform-hmpps-nonlive` | `10.195.64.0/20` |
+| `container-platform-laa-nonlive` | `10.195.80.0/20` |
+| `container-platform-cd-nonlive` | `10.195.96.0/20` |
+
+These are the **node** ranges. Your pods have their own addresses, but traffic leaving the
+cluster appears to come from the node it is running on, so the node range is what the
+security group needs to allow.
+
+More clusters will be added over time. The ranges for every cluster are defined in the
+`vpc_cidr` map in
+[network/locals.tf](https://github.com/ministryofjustice/modernisation-platform-environments/blob/main/terraform/environments/cloud-platform/network/locals.tf),
+where `primary` is the node range you need and `secondary` is the pod range.
+
+If your cluster is not listed above, use the `primary` value for it from that file. Ask in
+[#container-platform-alpha-users](https://moj.enterprise.slack.com/archives/C0BKZHMQNRK)
+if you are not sure which applies to you.
+
+Raise a pull request with the changes. Once it is merged, the pipeline applies it.
+
+The example above uses `3306` for MySQL. Use the port for your engine:
+
+| Engine | Port |
+| --- | --- |
+| PostgreSQL (RDS and Aurora) | `5432` |
+| MySQL and MariaDB | `3306` |
+| Microsoft SQL Server | `1433` |
+| Redis (ElastiCache) | `6379` |
+
+If you use an engine that is not listed, ask in
+[#container-platform-alpha-users](https://moj.enterprise.slack.com/archives/C0BKZHMQNRK)
+before you start. Traffic between the platforms passes through an inspection firewall that
+allows these ports only, and anything else is dropped without an error.
