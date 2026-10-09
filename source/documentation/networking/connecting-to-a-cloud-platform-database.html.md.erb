@@ -142,32 +142,3 @@ password: {{index .data "database_password" | base64decode}}
 ## Step 3: Connect
 
 Follow the instructions in [Connecting to a Remote Database With A Port Forwarding Pod](/documentation/networking/connecting-to-a-remote-database-with-port-forward.html)
-
-## Troubleshooting
-
-**The connection times out.**
-
-Check the security group is attached to the instance, not just created. This is the most
-common cause. Confirm `vpc_security_group_ids` is set on your RDS module and that the change
-has been applied:
-
-```bash
-aws rds describe-db-instances --db-instance-identifier [your database identifier] --query 'DBInstances[0].VpcSecurityGroups[*].VpcSecurityGroupId' --output text
-aws ec2 describe-security-groups --group-ids sg-xxxxxxxxxxxxxxxxx sg-yyyyyyyyyyyyyyyyy --output table
-```
-
-Then check you used the node range for your cluster from the table above, rather than a pod
-address.
-
-**The pod is rejected with a `violates PodSecurity "restricted:latest"` error.**
-
-You have run the command without the `--overrides` section. Use the full command in step 2.
-
-**`socat` fails to start, or the pod crashes.**
-
-`LOCAL_PORT` must be above 1024. The container does not run as root and cannot bind to
-privileged ports.
-
-## Getting help
-
-Ask in [#container-platform-alpha-users](https://moj.enterprise.slack.com/archives/C0BKZHMQNRK).
