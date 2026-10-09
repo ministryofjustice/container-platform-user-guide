@@ -8,7 +8,8 @@ review_in: 6 months
 
 ## Connecting from an application
 
-The steps above are for reaching a database from your own machine. A deployed application
+The steps in [Connecting to a Remote Database With A Port Forwarding Pod](/documentation/networking/connecting-to-a-remote-database-with-port-forward.html)
+are for reaching a database from your own machine. A deployed application
 uses the same network path, so no further network changes are needed.
 
 Three things are different when an application connects.
