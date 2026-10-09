@@ -89,3 +89,10 @@ kubectl -n [your container platform namespace] delete pod port-forward-pod
 Please delete it when you have finished. Pods created this way are not managed by a
 deployment and will be removed when the node they run on is replaced, so do not rely on one
 staying up.
+
+## Connecting from an application
+
+The steps above are for reaching a database from your own machine. A deployed application
+uses the same network path, so no further network changes are needed, but there are other differences. See
+[Connecting to a Remote Database From an Application](/documentation/networking/connecting-to-a-remote-database-from-an-application.html)
+for further advice.
