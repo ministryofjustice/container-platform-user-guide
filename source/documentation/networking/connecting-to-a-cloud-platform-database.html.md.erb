@@ -117,6 +117,35 @@ If you use an engine that is not listed, ask in
 before you start. Traffic between the platforms passes through an inspection firewall that
 allows these ports only, and anything else is dropped without an error.
 
+## Step 2: Get Your Target RDS Details
+
+You will need the following details to connect:
+
+- hostname
+- dbname
+- username
+- password
+
+You can find the hostname in the `rds_instance_address` field of your
+RDS secret in your Cloud Platform namespace.
+
+Get the credentials from the RDS secret in your **Cloud Platform** namespace:
+
+```bash
+kubectl -n [your cloud platform namespace] get secret [your rds secret] -o go-template='
+dbname: {{index .data "database_name" | base64decode}}
+username: {{index .data "database_username" | base64decode}}
+password: {{index .data "database_password" | base64decode}}
+'
+```
+
+## Step 3: Connect
+
+Follow the instructions in - [Connecting to a Remote Database With A Port Forwarding Pod](/documentation/networking/connecting-to-a-remote-database-woth-port-forward.html)
+
+
+
+
 
 
 
@@ -133,8 +162,7 @@ kubectl config current-context
 
 Run this in your Container Platform namespace, replacing `[your container platform namespace]`
 and `[your database hostname]`. The hostname appears in **both** `REMOTE_HOST` and
-`overrides` sections. You can find the hostname in the `rds_instance_address` field of your
-RDS secret in your Cloud Platform namespace.
+`overrides` sections. 
 
 ```bash
 kubectl -n [your container platform namespace] run port-forward-pod \
@@ -168,16 +196,6 @@ kubectl -n [your container platform namespace] port-forward port-forward-pod 543
 Leave this running while you use the database.
 
 ## Step 4: connect
-
-Get the credentials from the RDS secret in your **Cloud Platform** namespace:
-
-```bash
-kubectl -n [your cloud platform namespace] get secret [your rds secret] -o go-template='
-dbname: {{index .data "database_name" | base64decode}}
-username: {{index .data "database_username" | base64decode}}
-password: {{index .data "database_password" | base64decode}}
-'
-```
 
 Then connect as if the database were local:
 
