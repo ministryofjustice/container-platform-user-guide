@@ -141,7 +141,7 @@ password: {{index .data "database_password" | base64decode}}
 
 ## Step 3: Connect
 
-Follow the instructions in - [Connecting to a Remote Database With A Port Forwarding Pod](/documentation/networking/connecting-to-a-remote-database-woth-port-forward.html)
+Follow the instructions in - [Connecting to a Remote Database With A Port Forwarding Pod](/documentation/networking/connecting-to-a-remote-database-with-port-forward.html)
 
 
 
@@ -150,73 +150,13 @@ Follow the instructions in - [Connecting to a Remote Database With A Port Forwar
 
 
 
-## Step 2: run a port-forward pod
 
-The remaining steps use two different clusters. Steps 2, 3 and 5 run against your Container
-Platform cluster. Step 4 reads a secret from your Cloud Platform namespace. Check which
-cluster you are pointed at before each step:
 
-```bash
-kubectl config current-context
-```
 
-Run this in your Container Platform namespace, replacing `[your container platform namespace]`
-and `[your database hostname]`. The hostname appears in **both** `REMOTE_HOST` and
-`overrides` sections. 
 
-```bash
-kubectl -n [your container platform namespace] run port-forward-pod \
-  --image=ministryofjustice/port-forward \
-  --port=5432 \
-  --env="REMOTE_HOST=[your database hostname]" \
-  --env="LOCAL_PORT=5432" \
-  --env="REMOTE_PORT=5432" \
-  --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"runAsUser":1001,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"port-forward-pod","image":"ministryofjustice/port-forward","ports":[{"containerPort":5432}],"env":[{"name":"REMOTE_HOST","value":"[your database hostname]"},{"name":"LOCAL_PORT","value":"5432"},{"name":"REMOTE_PORT","value":"5432"}],"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}'
-```
 
-> This command differs from the equivalent one in the
-> [Cloud Platform user guide](https://user-guide.cloud-platform.service.justice.gov.uk/documentation/other-topics/rds-external-access.html).
-> Container Platform enforces the `restricted` Pod Security Standard, so the security
-> settings have to be set explicitly. Without the `--overrides` the pod is rejected.
 
-Check it started:
 
-```bash
-kubectl -n [your container platform namespace] logs port-forward-pod
-```
-
-You should see `Socat started listening on 5432`.
-
-## Step 3: forward traffic from your machine
-
-```bash
-kubectl -n [your container platform namespace] port-forward port-forward-pod 5432:5432
-```
-
-Leave this running while you use the database.
-
-## Step 4: connect
-
-Then connect as if the database were local:
-
-```bash
-psql --host localhost --port 5432 \
-  --dbname [your database name] \
-  --username [your database username] \
-  --password
-```
-
-You will be prompted for the password.
-
-## Step 5: delete the port-forward pod
-
-```bash
-kubectl -n [your container platform namespace] delete pod port-forward-pod
-```
-
-Please delete it when you have finished. Pods created this way are not managed by a
-deployment and will be removed when the node they run on is replaced, so do not rely on one
-staying up.
 
 ## Connecting from an application
 
