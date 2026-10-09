@@ -3,3 +3,25 @@ title: Connecting to a Modernisation Platform database
 last_reviewed_on: 2026-10-09
 review_in: 6 months
 ---
+
+# <%= current_page.data.title %>
+
+If you have an RDS instance on Modernisation Platform and a namespace on a Container Platform
+cluster, you can use a port-forward pod on the Container Platform to reach that
+database and prove connectivity.
+
+There are two parts to it:
+
+1. Allow your cluster's address range through the database's security group. This is a
+   Terraform change in your Modernisation Platform namespace.
+2. Connect to the database. To do this from your own machine, use a port-forward pod.
+
+## Before you start
+
+You need:
+
+- a namespace on a Container Platform nonlive cluster.
+  See [Deploying an application to the Container Platform](https://user-guide.development.container-platform.service.justice.gov.uk/documentation/getting-started/1-deploying-an-application-to-the-container-platform.html)
+- an RDS instance on the Modernisation Platform. See [Deploying an RDS Instance in the Modernisation Platform](https://user-guide.modernisation-platform.service.justice.gov.uk/user-guide/how-to-use-rds-module.html#rds-instance-module)
+- the ability to raise a pull request against
+  [modernisation-platform-environments](https://github.com/ministryofjustice/modernisation-platform-environments)
