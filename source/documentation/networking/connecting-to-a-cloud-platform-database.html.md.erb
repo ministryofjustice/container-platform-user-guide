@@ -126,13 +126,11 @@ You will need the following details to connect:
 - username
 - password
 
-You can find the hostname in the `rds_instance_address` field of your
-RDS secret in your Cloud Platform namespace.
-
-Get the credentials from the RDS secret in your **Cloud Platform** namespace:
+Get the credentials and other details from the RDS secret in your **Cloud Platform** namespace:
 
 ```bash
 kubectl -n [your cloud platform namespace] get secret [your rds secret] -o go-template='
+rds_instance_address: {{index .data "rds_instance_address" | base64decode}}
 dbname: {{index .data "database_name" | base64decode}}
 username: {{index .data "database_username" | base64decode}}
 password: {{index .data "database_password" | base64decode}}
